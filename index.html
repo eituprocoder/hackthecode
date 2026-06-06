@@ -7,6 +7,32 @@
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    
+    <link rel="manifest" href='data:application/json,{"name":"Mi PWA","short_name":"PWA","start_url":"./","display":"standalone","background_color":"#ffffff","icons":[{"src":"https://cdn-icons-png.flaticon.com/512/3069/3069172.png","sizes":"512x512","type":"image/png"}]}'>
+
+    <style>
+        body { font-family: sans-serif; display: grid; place-items: center; height: 100vh; margin: 0; }
+    </style>
+</head>
+<body>
+    <script>
+        // Registrar el Service Worker desde un Blob para que sea un solo archivo
+        const swCode = `
+            self.addEventListener('fetch', (e) => {
+                e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+            });
+        `;
+        const blob = new Blob([swCode], { type: 'text/javascript' });
+        const swUrl = URL.createObjectURL(blob);
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register(swUrl)
+                .then(() => console.log('Service Worker registrado en memoria'));
+        }
+    </script>
+</body>
+</html>
     
     <style>
         :root {
