@@ -1,0 +1,21 @@
+{
+  "name": "Hack The Code",
+  "short_name": "HackCode",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#111111",
+  "theme_color": "#00ff88",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "hackthecode.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "hackthecode.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
