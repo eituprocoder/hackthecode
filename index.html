@@ -4,17 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hack the Code</title>
-    <script>
-    if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('Service Worker registrado correctamente'))
-      .catch(err => console.log('Error al registrar:', err));
-  }
-</script>
-
-<!-- No olvides vincular el manifest en el <head> -->
-<link rel="manifest" href="manifest.json">
-    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <!-- Replaced PeerJS with Supabase JS Client -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --hacker-green: #00ff41;
@@ -50,6 +41,20 @@
         }
         button:hover { background: var(--hacker-green); color: black; cursor: pointer; }
         button:disabled { border-color: gray; color: gray; cursor: not-allowed; }
+
+        /* Lobby Finder Buttons */
+        .lobby-btn {
+            background: #111;
+            color: cyan;
+            border: 1px solid cyan;
+            padding: 8px;
+            margin: 5px 0;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        .lobby-btn:hover { background: cyan; color: black; }
 
         /* Profile */
         #profile-badge {
@@ -131,8 +136,20 @@
         <br>
         <button onclick="hostGame()">Create Game</button>
         <br><br>
-        <input type="text" id="join-id" placeholder="Room ID">
-        <button onclick="joinGame()">Join Game</button>
+        
+        <!-- Preserved original join ID inputs but hidden to use Lobby Browser -->
+        <div style="display: none;">
+            <input type="text" id="join-id" placeholder="Room ID">
+            <button onclick="joinGame()">Join Game (Manual)</button>
+        </div>
+
+        <!-- New Lobby Browser -->
+        <div id="lobby-browser" style="margin-top: 15px; border-top: 1px dashed var(--hacker-green); padding-top: 15px;">
+            <h3 style="margin-top: 0; color: cyan;">🌐 Available Lobbies</h3>
+            <div id="available-rooms" style="max-height: 150px; overflow-y: auto; text-align: center; padding: 5px;">
+                <p style="color: gray;">Searching for networks...</p>
+            </div>
+        </div>
     </div>
 
     <div id="lobby" class="card hidden">
@@ -213,14 +230,13 @@
     function sfxEliminated() { initAudio(); playTone(300, 'square', 0.5, 0.1); setTimeout(()=>playTone(200, 'square', 0.5, 0.1), 250); }
     function sfxWin() { initAudio(); [523, 659, 783, 1046].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.3, 0.1), i*150)); }
 
-    // Intercept clicks for button SFX
     document.addEventListener('click', (e) => { if(e.target.tagName === 'BUTTON') sfxClick(); });
 
     // --- TUTORIAL LOGIC ---
     const tutSteps = [
         "Welcome to Hack the Code, the game where your mind is your greatest weapon.",
         "The objective is to figure out and crack your rivals' secret codes before they crack yours.",
-        "To start, create a game as 'Host' or join one with a 'Room ID'.",
+        "To start, create a game as 'Host' or join one from the 'Available Lobbies'.",
         "Once in the lobby, choose your 6-digit secret code. Keep it secret from everyone!",
         "When all players are ready, the game will begin. You'll see your rivals on the screen.",
         "Type a 6-digit code in a rival's panel and press 'HACK'.",
@@ -248,12 +264,19 @@
         document.getElementById('tutorial-overlay').classList.add('hidden');
     }
 
-    // --- GAME VARIABLES ---
-    let peer;
-    let conn; 
-    let connections = []; 
-    let myId;
+    // --- SUPABASE & GAME VARIABLES ---
+    const supabaseUrl = 'https://gtedvztwsrgxwbiyznkm.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0ZWR2enR3c3JneHdiaXl6bmttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2MDk3MzIsImV4cCI6MjA5MzE4NTczMn0.fEgkFdx1rMHQNuXZOFIPsfemQxcfVVET-c1OarsHJG8';
+    const sb = supabase.createClient(supabaseUrl, supabaseKey);
+
+    let globalChannel;
+    let gameChannel;
+
+    let peer = null; // Preserved variable
+    let connections = []; // Preserved variable
+    let myId = crypto.randomUUID(); // Generated for Supabase Tracking
     let isHost = false;
+    let currentRoomId = null;
     let myData = { name: '', code: '', ready: false, eliminated: false };
     let players = [];
     let trophies = parseInt(localStorage.getItem('hackTheCode_trophies')) || 0;
@@ -262,7 +285,41 @@
     let sharedMusicData = null;
     let sharedMusicName = "";
 
+    // Mock conn object to preserve original logic flow using sendBroadcast
+    let conn = {
+        send: function(data) { sendBroadcast(data); }
+    };
+
     document.getElementById('trophy-count').innerText = trophies;
+
+    // Initialize Global Lobby Browser
+    window.onload = () => {
+        globalChannel = sb.channel('global-lobby', {
+            config: { presence: { key: myId } }
+        });
+        
+        globalChannel.on('presence', { event: 'sync' }, () => {
+            const state = globalChannel.presenceState();
+            const roomList = document.getElementById('available-rooms');
+            roomList.innerHTML = '';
+            let found = false;
+            
+            for (const key in state) {
+                const user = state[key][0];
+                if (user.isHost) {
+                    found = true;
+                    const btn = document.createElement('button');
+                    btn.className = 'lobby-btn';
+                    btn.innerHTML = `> Connect to: <strong>${user.hostName}'s Network</strong>`;
+                    btn.onclick = () => joinGame(user.roomId);
+                    roomList.appendChild(btn);
+                }
+            }
+            if (!found) roomList.innerHTML = '<p style="color: gray;">No active networks found.</p>';
+        });
+        
+        globalChannel.subscribe();
+    };
 
     // Music Reader (Host only)
     document.getElementById('music-file').addEventListener('change', function(e) {
@@ -278,7 +335,7 @@
         reader.readAsDataURL(file);
     });
 
-    // --- CONNECTION LOGIC ---
+    // --- CONNECTION LOGIC (SUPABASE) ---
 
     function hostGame() {
         const nameInput = document.getElementById('username').value.trim();
@@ -286,72 +343,80 @@
         
         myData.name = nameInput;
         isHost = true;
-        initPeer();
+        currentRoomId = myId;
         
-        peer.on('open', (id) => {
-            myId = id;
-            document.getElementById('display-id').innerText = id;
-            // Generate QR Code
-            document.getElementById('qr-container').innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}&color=00ff41&bgcolor=000" alt="Room QR Code">`;
-            document.getElementById('host-controls').classList.remove('hidden');
-            showLobby();
-            addOrUpdatePlayer({ id: myId, name: myData.name, ready: false, eliminated: false });
-        });
+        document.getElementById('display-id').innerText = currentRoomId.substring(0,8).toUpperCase();
+        document.getElementById('qr-container').innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${currentRoomId}&color=00ff41&bgcolor=000" alt="Room QR Code">`;
+        document.getElementById('host-controls').classList.remove('hidden');
+        showLobby();
+        addOrUpdatePlayer({ id: myId, name: myData.name, ready: false, eliminated: false });
 
-        peer.on('connection', (c) => {
-            if (players.length >= 10) {
-                c.send({ type: 'ERROR', msg: 'The room is full (Maximum 10 players)' });
-                setTimeout(() => c.close(), 500);
-                return;
-            }
-            
-            c.on('data', (data) => handleData(data, c));
-            c.on('open', () => {
-                connections.push(c);
-                // If Host has uploaded music, send it to the new player
-                if (sharedMusicData) {
-                    c.send({ type: 'MUSIC', data: sharedMusicData, name: sharedMusicName });
-                }
-            });
-            c.on('close', () => {
-                players = players.filter(p => p.id !== c.peer);
-                connections = connections.filter(conn => conn.peer !== c.peer);
-                broadcast({ type: 'PLAYER_LIST', list: players });
-                updatePlayerListUI();
-                checkAllReady();
-            });
-        });
+        // Advertise room in global lobby
+        globalChannel.track({ isHost: true, roomId: currentRoomId, hostName: myData.name });
+        
+        joinGameRoom(currentRoomId);
     }
 
-    function joinGame() {
+    function joinGame(roomId = null) {
         const nameInput = document.getElementById('username').value.trim();
-        const hostId = document.getElementById('join-id').value.trim();
+        const hostId = roomId || document.getElementById('join-id').value.trim();
         
         if (!nameInput) return alert("Please enter your name first.");
-        if (!hostId) return alert("Please enter the room ID.");
+        if (!hostId) return alert("Please select a lobby network.");
         
         myData.name = nameInput;
-        initPeer();
+        isHost = false;
+        currentRoomId = hostId;
         
-        peer.on('open', (id) => {
-            myId = id;
-            conn = peer.connect(hostId);
-            
-            conn.on('open', () => {
-                conn.send({ type: 'JOIN', id: myId, name: myData.name });
-                document.getElementById('display-id').innerText = hostId;
-                showLobby();
-            });
-            
-            conn.on('data', (data) => handleData(data, conn));
-            conn.on('close', () => alert("Connection to host lost."));
-            conn.on('error', () => alert("Error connecting to the room."));
+        document.getElementById('display-id').innerText = hostId.substring(0,8).toUpperCase();
+        showLobby();
+        
+        joinGameRoom(hostId);
+    }
+
+    function joinGameRoom(roomId) {
+        gameChannel = sb.channel(`game-${roomId}`, {
+            config: { presence: { key: myId } }
+        });
+        
+        gameChannel.on('broadcast', { event: 'game-action' }, ({ payload }) => {
+            handleData(payload, null);
+        });
+
+        // Handle Disconnects
+        gameChannel.on('presence', { event: 'sync' }, () => {
+            const state = gameChannel.presenceState();
+            const activeIds = Object.keys(state);
+            if (isHost && players.length > 0) {
+                let changed = false;
+                players = players.filter(p => {
+                    if (p.id !== myId && !activeIds.includes(p.id)) {
+                        changed = true; return false;
+                    }
+                    return true;
+                });
+                if (changed) {
+                    broadcast({ type: 'PLAYER_LIST', list: players });
+                    updatePlayerListUI();
+                    checkAllReady();
+                }
+            }
+        });
+        
+        gameChannel.subscribe((status) => {
+            if (status === 'SUBSCRIBED') {
+                gameChannel.track({ id: myId });
+                if (!isHost) {
+                    sendBroadcast({ type: 'JOIN', id: myId, name: myData.name });
+                } else if (sharedMusicData) {
+                    sendBroadcast({ type: 'MUSIC', data: sharedMusicData, name: sharedMusicName });
+                }
+            }
         });
     }
 
-    function initPeer() {
-        peer = new Peer();
-        peer.on('error', (err) => alert("Connection error: " + err.type));
+    function sendBroadcast(data) {
+        if (gameChannel) gameChannel.send({ type: 'broadcast', event: 'game-action', payload: data });
     }
 
     function showLobby() {
@@ -369,7 +434,7 @@
                 break;
             case 'JOIN': 
                 addOrUpdatePlayer({ id: data.id, name: data.name, ready: false, eliminated: false });
-                broadcast({ type: 'PLAYER_LIST', list: players });
+                if (isHost) broadcast({ type: 'PLAYER_LIST', list: players });
                 break;
             case 'PLAYER_LIST': 
                 players = data.list;
@@ -383,9 +448,11 @@
                 let p = players.find(player => player.id === data.id);
                 if (p) {
                     p.ready = data.ready;
-                    broadcast({ type: 'PLAYER_LIST', list: players });
-                    updatePlayerListUI();
-                    checkAllReady();
+                    if (isHost) {
+                        broadcast({ type: 'PLAYER_LIST', list: players });
+                        updatePlayerListUI();
+                        checkAllReady();
+                    }
                 }
                 break;
             case 'START_GAME':
@@ -406,8 +473,8 @@
                     let feedbackData = { type: 'GUESS_RESULT', from: myId, to: data.from, guess: data.val, result: resultArr };
                     
                     if (isHost) {
-                        let attackerConn = connections.find(c => c.peer === data.from);
-                        if (attackerConn) attackerConn.send(feedbackData);
+                        // In pub/sub, broadcasting handles the routing
+                        broadcast(feedbackData);
                     } else {
                         conn.send(feedbackData);
                     }
@@ -425,7 +492,7 @@
                         }
                     }
                 } else if (isHost) { 
-                    // Host routes game query back to original attacker
+                    // Host routes game query back to original attacker (Ignored in Pub/Sub safely)
                     let targetConn = connections.find(c => c.peer === data.to);
                     if (targetConn) targetConn.send(data);
                 }
@@ -435,7 +502,7 @@
                 if (data.to === myId) {
                     handleFeedback(data);
                 } else if (isHost) {
-                    // Host handles routing result to correct source
+                    // Host handles routing result to correct source (Ignored in Pub/Sub safely)
                     let attackerConn = connections.find(c => c.peer === data.to);
                     if (attackerConn) attackerConn.send(data);
                 }
@@ -471,7 +538,7 @@
 
         if (isHost) {
             let self = players.find(p => p.id === myId);
-            self.ready = true;
+            if (self) self.ready = true;
             broadcast({ type: 'PLAYER_LIST', list: players });
             updatePlayerListUI();
             checkAllReady();
@@ -488,13 +555,14 @@
         if (allReady) {
             broadcast({ type: 'START_GAME', list: players });
             runGameStart();
+            globalChannel.untrack(); // Stop advertising full/started game
         }
     }
 
     // --- GAME ENGINE ---
 
     function runGameStart() {
-        initAudio(); // Initialize audio context on player interaction
+        initAudio(); 
         document.getElementById('lobby').classList.add('hidden');
         document.getElementById('game-screen').classList.remove('hidden');
         document.getElementById('chat-container').classList.remove('hidden');
@@ -502,7 +570,6 @@
         document.getElementById('show-my-code').innerText = myData.code;
         myData.eliminated = false;
         
-        // Start playing audio track if loaded
         const bgAudio = document.getElementById('bg-music');
         if(bgAudio.src && bgAudio.src !== window.location.href) {
             bgAudio.play().catch(e => console.log("Audio presentation blocked by browser policies", e));
@@ -538,9 +605,7 @@
         if (guess.length !== 6) return alert("You must guess with 6 digits.");
 
         if (isHost) {
-            // Host sends request to client target through connection network
-            let targetConn = connections.find(c => c.peer === targetId);
-            if (targetConn) targetConn.send({ type: 'GUESS', from: myId, to: targetId, val: guess });
+            broadcast({ type: 'GUESS', from: myId, to: targetId, val: guess });
         } else {
             conn.send({ type: 'GUESS', from: myId, to: targetId, val: guess });
         }
@@ -548,7 +613,6 @@
     }
 
     function handleFeedback(data) {
-        // Play SFX according to correctness
         if (data.result.includes('✅')) sfxHit();
         else sfxMiss();
 
@@ -594,8 +658,8 @@
     }
 
     function showVictory(winnerId, winnerName) {
-        document.getElementById('bg-music').pause(); // Stop music stream
-        sfxWin(); // Trigger victory fanfare
+        document.getElementById('bg-music').pause(); 
+        sfxWin(); 
 
         document.getElementById('game-screen').classList.add('hidden');
         document.getElementById('victory-screen').classList.remove('hidden');
@@ -647,13 +711,19 @@
             p.eliminated = false;
         });
 
+        if (isHost) {
+            // Readvertise in global lobby
+            globalChannel.track({ isHost: true, roomId: currentRoomId, hostName: myData.name });
+        }
+
         updatePlayerListUI();
     }
 
     // --- UTILITY/HELPER FUNCTIONS ---
 
     function broadcast(data) {
-        connections.forEach(c => c.send(data));
+        // Replaced peerJS connection mapping with Supabase Broadcast
+        sendBroadcast(data);
     }
 
     function updatePlayerListUI() {
@@ -697,3 +767,5 @@
 
 </body>
 </html>
+
+
