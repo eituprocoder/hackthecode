@@ -1,4 +1,4 @@
-const CACHE_NAME = "Hack-the-code";
+const CACHE_NAME = "hack-the-code";
 
 const FILES_TO_CACHE = [
   "./",
