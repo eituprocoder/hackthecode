@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hack the Code</title>
-    <!-- Replaced PeerJS with Supabase JS Client -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     <style>
         :root {
@@ -54,7 +53,7 @@
             transition: all 0.2s;
             text-align: left;
         }
-        .lobby-btn:hover { background: cyan; color: black; }
+        .lobby-btn:hover { background: cyan; color: black; box-shadow: 0 0 10px cyan; }
 
         /* Profile */
         #profile-badge {
@@ -64,6 +63,7 @@
             border: 1px solid var(--hacker-green);
             padding: 10px;
             font-weight: bold;
+            box-shadow: 0 0 5px var(--hacker-green);
         }
 
         /* Game Screen */
@@ -129,27 +129,36 @@
 <div class="container">
     <h1>> HACK THE CODE _</h1>
 
-    <button onclick="openTutorial()" style="margin-bottom: 15px; border-color: cyan; color: cyan;">📖 How to play?</button>
+    <button onclick="openTutorial()" style="margin-bottom: 15px; border-color: cyan; color: cyan; box-shadow: 0 0 5px cyan;">📖 How to play?</button>
 
-    <div id="menu" class="card">
-        <input type="text" id="username" placeholder="Your Hacker Name">
-        <br>
-        <button onclick="hostGame()">Create Game</button>
-        <br><br>
+    <div style="display: flex; gap: 20px; flex-wrap: wrap; justify-content: center;">
         
-        <!-- Preserved original join ID inputs but hidden to use Lobby Browser -->
-        <div style="display: none;">
-            <input type="text" id="join-id" placeholder="Room ID">
-            <button onclick="joinGame()">Join Game (Manual)</button>
-        </div>
+        <div id="menu" class="card" style="flex: 1; min-width: 300px;">
+            <input type="text" id="username" placeholder="Your Hacker Name">
+            <br>
+            <button onclick="hostGame()">Create Game</button>
+            <br><br>
+            
+            <div style="display: none;">
+                <input type="text" id="join-id" placeholder="Room ID">
+                <button onclick="joinGame()">Join Game (Manual)</button>
+            </div>
 
-        <!-- New Lobby Browser -->
-        <div id="lobby-browser" style="margin-top: 15px; border-top: 1px dashed var(--hacker-green); padding-top: 15px;">
-            <h3 style="margin-top: 0; color: cyan;">🌐 Available Lobbies</h3>
-            <div id="available-rooms" style="max-height: 150px; overflow-y: auto; text-align: center; padding: 5px;">
-                <p style="color: gray;">Searching for networks...</p>
+            <div id="lobby-browser" style="margin-top: 15px; border-top: 1px dashed var(--hacker-green); padding-top: 15px;">
+                <h3 style="margin-top: 0; color: cyan; text-shadow: 0 0 5px cyan;">🌐 Available Lobbies</h3>
+                <div id="available-rooms" style="max-height: 150px; overflow-y: auto; text-align: center; padding: 5px;">
+                    <p style="color: gray;">Searching for networks...</p>
+                </div>
             </div>
         </div>
+
+        <div id="leaderboard" class="card" style="flex: 1; min-width: 250px; border-color: gold; box-shadow: 0 0 10px gold;">
+            <h3 style="margin-top: 0; color: gold; text-shadow: 0 0 5px gold;">🏆 Global Ranking</h3>
+            <div id="leaderboard-list" style="max-height: 250px; overflow-y: auto; text-align: left; font-size: 0.9em; padding-right: 5px;">
+                <p style="color: gray; text-align: center;">Syncing with server...</p>
+            </div>
+        </div>
+
     </div>
 
     <div id="lobby" class="card hidden">
@@ -174,9 +183,16 @@
     </div>
 
     <div id="game-screen" class="hidden">
-        <div class="card">
-            <h4>YOUR CODE: <span id="show-my-code" style="color: white;"></span></h4>
+        <div class="card" style="position: relative;">
+            <h4>YOUR CODE: <span id="show-my-code" style="color: white; font-size: 1.2em;"></span></h4>
+            
+            <div id="change-code-ui" style="margin-top: 15px; border-top: 1px dashed var(--hacker-green); padding-top: 10px;">
+                <input type="text" id="new-code-input" maxlength="6" pattern="\d{6}" placeholder="New 6 Digits" style="width: 120px;" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                <button id="btn-change-code" onclick="changeSecretCode()" style="border-color: #ff00ff; color: #ff00ff; box-shadow: 0 0 5px #ff00ff;">🔄 Change Code</button>
+                <br><span id="cooldown-timer" style="color: yellow; font-size: 0.8em; display: none; margin-top: 5px;"></span>
+            </div>
         </div>
+
         <div id="rivals-list"></div>
     </div>
 
@@ -272,28 +288,30 @@
     let globalChannel;
     let gameChannel;
 
-    let peer = null; // Preserved variable
-    let connections = []; // Preserved variable
-    let myId = crypto.randomUUID(); // Generated for Supabase Tracking
+    let peer = null;
+    let connections = [];
+    let myId = crypto.randomUUID();
     let isHost = false;
     let currentRoomId = null;
     let myData = { name: '', code: '', ready: false, eliminated: false };
     let players = [];
     let trophies = parseInt(localStorage.getItem('hackTheCode_trophies')) || 0;
     
-    // Shared Music
     let sharedMusicData = null;
     let sharedMusicName = "";
 
-    // Mock conn object to preserve original logic flow using sendBroadcast
     let conn = {
         send: function(data) { sendBroadcast(data); }
     };
 
     document.getElementById('trophy-count').innerText = trophies;
 
-    // Initialize Global Lobby Browser
+    // --- GLOBAL LOBBY & LEADERBOARD INITIALIZATION ---
     window.onload = () => {
+        // Load saved username if it exists
+        const savedName = localStorage.getItem('hackTheCode_name') || 'Anon_' + Math.floor(Math.random()*1000);
+        document.getElementById('username').value = localStorage.getItem('hackTheCode_name') || '';
+
         globalChannel = sb.channel('global-lobby', {
             config: { presence: { key: myId } }
         });
@@ -301,13 +319,20 @@
         globalChannel.on('presence', { event: 'sync' }, () => {
             const state = globalChannel.presenceState();
             const roomList = document.getElementById('available-rooms');
-            roomList.innerHTML = '';
-            let found = false;
+            const leaderboardList = document.getElementById('leaderboard-list');
             
+            roomList.innerHTML = '';
+            let foundLobby = false;
+            let allPlayers = [];
+            
+            // Parse all users in the presence state
             for (const key in state) {
                 const user = state[key][0];
-                if (user.isHost) {
-                    found = true;
+                allPlayers.push(user);
+                
+                // Build Lobby Browser
+                if (user.isHost && user.lobbyOpen) {
+                    foundLobby = true;
                     const btn = document.createElement('button');
                     btn.className = 'lobby-btn';
                     btn.innerHTML = `> Connect to: <strong>${user.hostName}'s Network</strong>`;
@@ -315,10 +340,30 @@
                     roomList.appendChild(btn);
                 }
             }
-            if (!found) roomList.innerHTML = '<p style="color: gray;">No active networks found.</p>';
+            if (!foundLobby) roomList.innerHTML = '<p style="color: gray;">No active networks found.</p>';
+
+            // Build Leaderboard
+            allPlayers.sort((a, b) => (b.trophies || 0) - (a.trophies || 0));
+            leaderboardList.innerHTML = allPlayers.map((p, i) => {
+                let rank = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : `#${i+1}`));
+                return `<div style="display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px dashed #333;">
+                    <span style="color: cyan;">${rank} ${p.name}</span>
+                    <span style="color: gold; text-shadow: 0 0 3px gold;">${p.trophies || 0} 🏆</span>
+                </div>`;
+            }).join('');
         });
         
-        globalChannel.subscribe();
+        // Broadcast presence for Leaderboard ranking
+        globalChannel.subscribe(async (status) => {
+            if (status === 'SUBSCRIBED') {
+                await globalChannel.track({ 
+                    name: savedName, 
+                    trophies: trophies, 
+                    isHost: false, 
+                    lobbyOpen: false 
+                });
+            }
+        });
     };
 
     // Music Reader (Host only)
@@ -342,6 +387,8 @@
         if (!nameInput) return alert("Please enter your name first.");
         
         myData.name = nameInput;
+        localStorage.setItem('hackTheCode_name', myData.name);
+        
         isHost = true;
         currentRoomId = myId;
         
@@ -351,8 +398,8 @@
         showLobby();
         addOrUpdatePlayer({ id: myId, name: myData.name, ready: false, eliminated: false });
 
-        // Advertise room in global lobby
-        globalChannel.track({ isHost: true, roomId: currentRoomId, hostName: myData.name });
+        // Advertise room in global lobby & update leaderboard name
+        globalChannel.track({ name: myData.name, trophies: trophies, isHost: true, roomId: currentRoomId, hostName: myData.name, lobbyOpen: true });
         
         joinGameRoom(currentRoomId);
     }
@@ -365,12 +412,17 @@
         if (!hostId) return alert("Please select a lobby network.");
         
         myData.name = nameInput;
+        localStorage.setItem('hackTheCode_name', myData.name);
+        
         isHost = false;
         currentRoomId = hostId;
         
         document.getElementById('display-id').innerText = hostId.substring(0,8).toUpperCase();
         showLobby();
         
+        // Update presence with official name
+        globalChannel.track({ name: myData.name, trophies: trophies, isHost: false, lobbyOpen: false });
+
         joinGameRoom(hostId);
     }
 
@@ -421,6 +473,7 @@
 
     function showLobby() {
         document.getElementById('menu').classList.add('hidden');
+        document.getElementById('leaderboard').classList.add('hidden');
         document.getElementById('lobby').classList.remove('hidden');
     }
 
@@ -473,7 +526,6 @@
                     let feedbackData = { type: 'GUESS_RESULT', from: myId, to: data.from, guess: data.val, result: resultArr };
                     
                     if (isHost) {
-                        // In pub/sub, broadcasting handles the routing
                         broadcast(feedbackData);
                     } else {
                         conn.send(feedbackData);
@@ -492,17 +544,14 @@
                         }
                     }
                 } else if (isHost) { 
-                    // Host routes game query back to original attacker (Ignored in Pub/Sub safely)
                     let targetConn = connections.find(c => c.peer === data.to);
                     if (targetConn) targetConn.send(data);
                 }
                 break;
             case 'GUESS_RESULT':
-                // Get result feedback of our own guess
                 if (data.to === myId) {
                     handleFeedback(data);
                 } else if (isHost) {
-                    // Host handles routing result to correct source (Ignored in Pub/Sub safely)
                     let attackerConn = connections.find(c => c.peer === data.to);
                     if (attackerConn) attackerConn.send(data);
                 }
@@ -555,7 +604,9 @@
         if (allReady) {
             broadcast({ type: 'START_GAME', list: players });
             runGameStart();
-            globalChannel.untrack(); // Stop advertising full/started game
+            
+            // Hide from Lobby Browser but keep tracking presence for Leaderboard
+            globalChannel.track({ name: myData.name, trophies: trophies, isHost: true, roomId: currentRoomId, hostName: myData.name, lobbyOpen: false });
         }
     }
 
@@ -576,6 +627,49 @@
         }
 
         renderRivals();
+    }
+
+    // NEW: CHANGE SECRET CODE LOGIC
+    let changeCodeCooldown = 0;
+    function changeSecretCode() {
+        if (changeCodeCooldown > 0 || myData.eliminated) return;
+        
+        const inputEl = document.getElementById('new-code-input');
+        const newCode = inputEl.value;
+        if (newCode.length !== 6) return alert("Your new code must be exactly 6 digits.");
+        
+        sfxHack();
+        myData.code = newCode;
+        document.getElementById('show-my-code').innerText = myData.code;
+        
+        // Trigger Cooldown
+        changeCodeCooldown = 15;
+        inputEl.value = '';
+        inputEl.disabled = true;
+        
+        const btn = document.getElementById('btn-change-code');
+        btn.disabled = true;
+        btn.style.color = "gray";
+        btn.style.borderColor = "gray";
+        btn.style.boxShadow = "none";
+        
+        const timerEl = document.getElementById('cooldown-timer');
+        timerEl.style.display = "inline-block";
+        
+        const interval = setInterval(() => {
+            changeCodeCooldown--;
+            timerEl.innerText = `(Recharging... ${changeCodeCooldown}s)`;
+            
+            if (changeCodeCooldown <= 0) {
+                clearInterval(interval);
+                inputEl.disabled = false;
+                btn.disabled = false;
+                btn.style.color = "#ff00ff";
+                btn.style.borderColor = "#ff00ff";
+                btn.style.boxShadow = "0 0 5px #ff00ff";
+                timerEl.style.display = "none";
+            }
+        }, 1000);
     }
 
     function renderRivals() {
@@ -682,6 +776,17 @@
         trophies++;
         localStorage.setItem('hackTheCode_trophies', trophies);
         document.getElementById('trophy-count').innerText = trophies;
+        
+        // Push the update to the live Global Leaderboard dynamically
+        const currentName = myData.name || localStorage.getItem('hackTheCode_name') || 'Anonymous';
+        globalChannel.track({ 
+            name: currentName, 
+            trophies: trophies, 
+            isHost: isHost, 
+            roomId: currentRoomId, 
+            hostName: myData.name, 
+            lobbyOpen: false 
+        });
     }
 
     // --- RESTART GAME SESSION (Host Only) ---
@@ -712,8 +817,8 @@
         });
 
         if (isHost) {
-            // Readvertise in global lobby
-            globalChannel.track({ isHost: true, roomId: currentRoomId, hostName: myData.name });
+            // Re-open Lobby Browser presence
+            globalChannel.track({ name: myData.name, trophies: trophies, isHost: true, roomId: currentRoomId, hostName: myData.name, lobbyOpen: true });
         }
 
         updatePlayerListUI();
@@ -722,7 +827,6 @@
     // --- UTILITY/HELPER FUNCTIONS ---
 
     function broadcast(data) {
-        // Replaced peerJS connection mapping with Supabase Broadcast
         sendBroadcast(data);
     }
 
@@ -767,5 +871,3 @@
 
 </body>
 </html>
-
-
