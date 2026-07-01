@@ -8,12 +8,12 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "hackthecode.png",
+      "src": "Hackthecode.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "hackthecode.png",
+      "src": "Hackthecode.png",
       "sizes": "512x512",
       "type": "image/png"
     }
