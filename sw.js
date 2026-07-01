@@ -4,10 +4,8 @@ const FILES_TO_CACHE = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./style.css",
-  "./script.js",
-  "./icon-192.png",
-  "./icon-512.png"
+  "./hackthecode.png",
+  "./hackthecode.png"
 ];
 
 // Instalar Service Worker
