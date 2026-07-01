@@ -1,10 +1,9 @@
-const CACHE_NAME = "hack-the-code";
+const CACHE_NAME = "hack-the-code-v1";
 
 const FILES_TO_CACHE = [
   "./",
   "./index.html",
   "./manifest.json",
-  "./hackthecode.png",
   "./hackthecode.png"
 ];
 
