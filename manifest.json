@@ -1,6 +1,6 @@
 {
   "name": "Hack The Code",
-  "short_name": "HackCode",
+  "short_name": "Hack The Code",
   "start_url": "./",
   "display": "standalone",
   "background_color": "#111111",
