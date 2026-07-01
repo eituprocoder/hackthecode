@@ -1,28 +1,26 @@
-const CACHE_NAME = "hack-the-code-v1";
+const cacheName = 'hackthecode'; 
 
-const FILES_TO_CACHE = [
-  "./",
-  "./index.html",
-  "./manifest.json",
-  "./hackthecode.png"
+const assets = [
+  './index.html'
 ];
 
-// Instalar Service Worker
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => {
-      return cache.addAll(FILES_TO_CACHE);
-    })
+// Evento de instalación: Guarda los archivos en el nuevo caché
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(cacheName)
+      .then(cache => cache.addAll(assets))
+      .then(() => self.skipWaiting()) // Fuerza al nuevo SW a activarse sin esperar
   );
 });
 
-// Activar y limpiar cachés viejas
-self.addEventListener("activate", event => {
-  event.waitUntil(
+// Evento de activación: Borra los cachés antiguos automáticamente
+self.addEventListener('activate', e => {
+  e.waitUntil(
     caches.keys().then(keys => {
       return Promise.all(
         keys.map(key => {
-          if (key !== CACHE_NAME) {
+          if (key !== cacheName) {
+            console.log('Borrando caché antiguo:', key);
             return caches.delete(key);
           }
         })
@@ -31,12 +29,9 @@ self.addEventListener("activate", event => {
   );
 });
 
-// Servir archivos desde caché
-self.addEventListener("fetch", event => {
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        return response || fetch(event.request);
-      })
+// Evento fetch: Sirve desde el caché, o busca en la red
+self.addEventListener('fetch', e => {
+  e.respondWith(
+    caches.match(e.request).then(res => res || fetch(e.request))
   );
 });
