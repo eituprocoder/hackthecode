@@ -4,6 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Hack the Code 3D - Cyberpunk Multiplayer</title>
+    <script>
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('Service Worker registrado correctamente'))
+      .catch(err => console.log('Error al registrar:', err));
+  }
+</script>
+<link rel="manifest" href="manifest.json">
     <!-- PeerJS -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <!-- Three.js (r128) -->
