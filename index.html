@@ -1,17 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>Hack the Code 3D - Cyberpunk Multiplayer</title>
-    <script>
-    if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-      .then(() => console.log('Service Worker registrado correctamente'))
-      .catch(err => console.log('Error al registrar:', err));
-  }
-</script>
-<link rel="manifest" href="manifest.json">
     <!-- PeerJS -->
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <!-- Three.js (r128) -->
@@ -376,9 +368,6 @@
 <div id="canvas-container"></div>
 <div id="glitch-overlay"></div>
 
-<!-- Audio element for uploaded music -->
-<audio id="bg-music" loop></audio>
-
 <!-- Toast Notification -->
 <div id="toast-notification"></div>
 
@@ -387,8 +376,9 @@
     <div class="top-bar">
         <div class="hud-card">
             <div><strong>HACKER ID:</strong> <span id="hud-my-name" style="color: #fff;">-</span></div>
-            <div><strong>CÓDIGO:</strong> <span id="hud-my-code" style="color: var(--cyber-cyan);">******</span></div>
-            <div class="trophy-badge">🏆 TROFEOS: <span id="trophy-count">0</span></div>
+            <div><strong>CODE:</strong> <span id="hud-my-code" style="color: var(--cyber-cyan);">******</span></div>
+            <div class="trophy-badge">🏆 TROPHIES: <span id="trophy-count">0</span></div>
+            <button id="btn-recode" class="interactive" onclick="useRecodeSkill()" style="margin-top: 8px; padding: 6px; font-size: 0.8em; width: 100%;">RECODE (READY)</button>
         </div>
 
         <div id="minimap-container" class="interactive">
@@ -396,16 +386,22 @@
         </div>
     </div>
 
+    <!-- Notebook Feature -->
+    <div id="notebook-container" class="hud-card interactive" style="position: absolute; right: 20px; top: 180px; width: 220px; height: 250px; display: flex; flex-direction: column;">
+        <div style="font-size: 0.9em; font-weight: bold; margin-bottom: 5px; color: var(--cyber-yellow);">📋 NOTEBOOK</div>
+        <textarea placeholder="Write your clues here..." style="flex-grow: 1; background: rgba(0, 0, 0, 0.6); color: var(--hacker-green); border: 1px dashed var(--hacker-green); resize: none; font-family: inherit; padding: 8px; outline: none; border-radius: 4px;"></textarea>
+    </div>
+
     <!-- Interaction Trigger Prompt -->
     <div id="interaction-prompt" class="interactive" onclick="triggerHackInteraction()">
-        ⌨️ PRESIONA [E] O TOCA AQUÍ PARA HACKEAR A <span id="target-player-name">---</span>
+        ⌨️ PRESS [E] OR TAP HERE TO HACK <span id="target-player-name">---</span>
     </div>
 
     <div class="bottom-hud">
         <div id="chat-container" class="interactive hidden">
             <div id="chat-box"></div>
             <div class="chat-input-group">
-                <input type="text" id="chat-input" placeholder="Mensaje..." maxlength="80">
+                <input type="text" id="chat-input" placeholder="Message..." maxlength="80">
                 <button onclick="sendChatMessage()">>></button>
             </div>
         </div>
@@ -421,40 +417,33 @@
 <div id="menu-modal" class="modal-overlay">
     <div class="cyber-panel">
         <h1 style="color: var(--hacker-green); text-shadow: 0 0 10px var(--hacker-green);">> HACK THE CODE 3D _</h1>
-        <p style="font-size: 0.9em; color: var(--cyber-cyan);">MULTIJUGADOR CIBERNÉTICO EN TIEMPO REAL</p>
+        <p style="font-size: 0.9em; color: var(--cyber-cyan);">REAL-TIME CYBER MULTIPLAYER</p>
 
-        <input type="text" id="username" placeholder="Nombre de Hacker" maxlength="12">
+        <input type="text" id="username" placeholder="Hacker Name" maxlength="12">
+        <input type="password" id="my-secret-code" maxlength="6" pattern="\d{6}" placeholder="Secret Code (6 digits)" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
         <br><br>
-        <button onclick="hostGame()">CREAR SALA (HOST)</button>
+        <button onclick="hostGame()">CREATE ROOM (HOST)</button>
         <br>
-        <div style="margin: 10px 0; color: #888;">--- O UNIRSE ---</div>
-        <input type="text" id="join-id" placeholder="ID de Sala">
-        <button class="btn-cyan" onclick="joinGame()">CONECTAR A SALA</button>
+        <div style="margin: 10px 0; color: #888;">--- OR JOIN ---</div>
+        <input type="text" id="join-id" placeholder="Room ID">
+        <button class="btn-cyan" onclick="joinGame()">JOIN ROOM</button>
         <br><br>
-        <button class="btn-cyan" onclick="openTutorial()" style="font-size: 0.85em;">📖 Manual de Instrucciones</button>
+        <button class="btn-cyan" onclick="openTutorial()" style="font-size: 0.85em;">📖 Instruction Manual</button>
     </div>
 </div>
 
 <!-- LOBBY MODAL -->
 <div id="lobby-modal" class="modal-overlay hidden">
     <div class="cyber-panel cyber-panel-cyan">
-        <h3>SALA DE ACCESO: <span id="display-id" style="color: #fff; user-select: text;">-</span></h3>
+        <h3>ACCESS ROOM: <span id="display-id" style="color: #fff; user-select: text;">-</span></h3>
         <div id="qr-container" style="margin: 10px 0;"></div>
+        
+        <!-- Host Controls for audio removed as requested -->
 
-        <div id="host-controls" class="hidden" style="border: 1px dashed var(--cyber-cyan); padding: 10px; margin: 10px 0;">
-            <p style="font-size: 0.85em; margin: 5px 0;">🎵 Host: Audio de Fondo (Opcional)</p>
-            <input type="file" id="music-file" accept="audio/*" class="hidden">
-            <button class="btn-cyan" onclick="document.getElementById('music-file').click()">Cargar MP3</button>
-            <div id="music-name" style="font-size: 0.8em; color: #aaa;">Sin audio</div>
-        </div>
-
-        <p style="margin-bottom: 5px;">Tu Código Secreto de 6 dígitos:</p>
-        <input type="password" id="my-secret-code" maxlength="6" pattern="\d{6}" placeholder="123456" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-        <br>
-        <button id="ready-btn" onclick="toggleReady()">ESTOY LISTO</button>
+        <button id="ready-btn" onclick="toggleReady()">I'M READY</button>
 
         <div style="margin-top: 15px; text-align: left;">
-            <strong style="color: var(--cyber-cyan);">Hackers en la sala:</strong>
+            <strong style="color: var(--cyber-cyan);">Hackers in the room:</strong>
             <div id="player-list" style="max-height: 120px; overflow-y: auto; margin-top: 5px; font-size: 0.9em;"></div>
         </div>
     </div>
@@ -463,36 +452,35 @@
 <!-- HACK TERMINAL MODAL (IN-GAME 3D HOLOGRAPHIC) -->
 <div id="hack-terminal-modal" class="modal-overlay">
     <div class="cyber-panel cyber-panel-cyan" style="max-width: 450px;">
-        <h3 style="color: var(--cyber-cyan);">TERMINAL DE ATAQUE: <span id="terminal-target-name">---</span></h3>
-        <p style="font-size: 0.85em; color: #aaa;">Introduce la clave de 6 dígitos para descifrar la terminal rival:</p>
+        <h3 style="color: var(--cyber-cyan);">ATTACK TERMINAL: <span id="terminal-target-name">---</span></h3>
+        <p style="font-size: 0.85em; color: #aaa;">Enter the 6-digit key to decrypt the rival terminal:</p>
 
         <input type="text" id="terminal-guess-input" maxlength="6" placeholder="000000" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-        <button class="btn-cyan" onclick="submitTerminalHack()">EJECUTAR HACKEO</button>
+        <button class="btn-cyan" onclick="submitTerminalHack()">EXECUTE HACK</button>
 
         <div id="terminal-feedback-list" class="terminal-feedback-box"></div>
 
-        <button class="btn-red" onclick="closeTerminalHack()">CERRAR TERMINAL</button>
+        <button class="btn-red" onclick="closeTerminalHack()">CLOSE TERMINAL</button>
     </div>
 </div>
 
 <!-- VICTORY / DEFEAT MODAL -->
 <div id="victory-modal" class="modal-overlay hidden">
     <div id="victory-panel" class="cyber-panel">
-        <h2 id="victory-title" style="font-size: 1.8em;">VICTORIA</h2>
+        <h2 id="victory-title" style="font-size: 1.8em;">VICTORY</h2>
         <p id="victory-subtitle" style="font-size: 1.1em; color: #fff;"></p>
         <br>
-        <button id="btn-play-again" class="btn-cyan hidden" onclick="playAgain()">Nueva Ronda</button>
-        <button onclick="location.reload()">Salir al Menú</button>
+        <button onclick="location.reload()">Exit to Menu</button>
     </div>
 </div>
 
 <!-- TUTORIAL MODAL -->
 <div id="tutorial-modal" class="modal-overlay hidden">
     <div class="cyber-panel cyber-panel-cyan">
-        <h3 style="color: var(--cyber-cyan);">INSTRUCCIONES (<span id="tut-step">1</span>/8)</h3>
+        <h3 style="color: var(--cyber-cyan);">INSTRUCTIONS (<span id="tut-step">1</span>/8)</h3>
         <p id="tut-text" style="min-height: 80px; font-size: 1em; line-height: 1.4;"></p>
-        <button class="btn-cyan" onclick="nextTutorial()">Siguiente</button>
-        <button class="btn-red" onclick="closeTutorial()">Cerrar</button>
+        <button class="btn-cyan" onclick="nextTutorial()">Next</button>
+        <button class="btn-red" onclick="closeTutorial()">Close</button>
     </div>
 </div>
 
@@ -549,8 +537,6 @@
     let players = []; 
     let remotePlayerMeshes = {}; 
     let trophies = parseInt(localStorage.getItem('hackTheCode_trophies')) || 0;
-    let sharedMusicData = null;
-    let sharedMusicName = "";
 
     document.getElementById('trophy-count').innerText = trophies;
 
@@ -562,25 +548,14 @@
         setTimeout(() => { toast.style.display = 'none'; }, 3000);
     }
 
-    // Lector MP3 Host
-    document.getElementById('music-file').addEventListener('change', function(e) {
-        const file = e.target.files[0];
-        if(!file) return;
-        document.getElementById('music-name').innerText = file.name;
-        sharedMusicName = file.name;
-        const reader = new FileReader();
-        reader.onload = function(evt) {
-            sharedMusicData = evt.target.result;
-            broadcast({ type: 'MUSIC', data: sharedMusicData, name: sharedMusicName });
-        };
-        reader.readAsDataURL(file);
-    });
-
     function hostGame() {
         const nameInput = document.getElementById('username').value.trim();
-        if (!nameInput) return alert("Ingresa tu nombre de Hacker.");
+        const codeInput = document.getElementById('my-secret-code').value;
+        if (!nameInput) return alert("Enter your Hacker name.");
+        if (codeInput.length !== 6) return alert("Enter exactly 6 digits for your secret code.");
         
         myData.name = nameInput;
+        myData.code = codeInput;
         isHost = true;
         initPeer();
         
@@ -588,23 +563,19 @@
             myId = id;
             document.getElementById('display-id').innerText = id;
             document.getElementById('qr-container').innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${id}&color=00f3ff&bgcolor=050c16" alt="QR Sala">`;
-            document.getElementById('host-controls').classList.remove('hidden');
             showLobby();
             addOrUpdatePlayer({ id: myId, name: myData.name, ready: false, eliminated: false, x: 0, z: 12, rot: 0, anim: 'idle' });
         });
 
         peer.on('connection', (c) => {
             if (players.length >= 10) {
-                c.send({ type: 'ERROR', msg: 'La sala está llena (Máximo 10 hackers).' });
+                c.send({ type: 'ERROR', msg: 'Room is full (Max 10 hackers).' });
                 setTimeout(() => c.close(), 500);
                 return;
             }
             c.on('data', (data) => handleData(data, c));
             c.on('open', () => {
                 connections.push(c);
-                if (sharedMusicData) {
-                    c.send({ type: 'MUSIC', data: sharedMusicData, name: sharedMusicName });
-                }
             });
             c.on('close', () => {
                 players = players.filter(p => p.id !== c.peer);
@@ -619,12 +590,15 @@
 
     function joinGame() {
         const nameInput = document.getElementById('username').value.trim();
+        const codeInput = document.getElementById('my-secret-code').value;
         const hostId = document.getElementById('join-id').value.trim();
         
-        if (!nameInput) return alert("Ingresa tu nombre de Hacker.");
-        if (!hostId) return alert("Introduce el ID de la sala.");
+        if (!nameInput) return alert("Enter your Hacker name.");
+        if (codeInput.length !== 6) return alert("Enter exactly 6 digits for your secret code.");
+        if (!hostId) return alert("Enter the Room ID.");
         
         myData.name = nameInput;
+        myData.code = codeInput;
         initPeer();
         
         peer.on('open', (id) => {
@@ -638,20 +612,21 @@
             });
             
             conn.on('data', (data) => handleData(data, conn));
-            conn.on('close', () => alert("Conexión perdida con el Host."));
-            conn.on('error', () => alert("Error al intentar unir a la sala."));
+            conn.on('close', () => alert("Connection to Host lost."));
+            conn.on('error', () => alert("Error trying to join the room."));
         });
     }
 
     function initPeer() {
         peer = new Peer();
-        peer.on('error', (err) => alert("Error de servidor P2P: " + err.type));
+        peer.on('error', (err) => alert("P2P server error: " + err.type));
     }
 
     function showLobby() {
         document.getElementById('menu-modal').classList.add('hidden');
         document.getElementById('lobby-modal').classList.remove('hidden');
         document.getElementById('hud-my-name').innerText = myData.name;
+        document.getElementById('hud-my-code').innerText = myData.code;
     }
 
     function handleData(data, connection) {
@@ -668,10 +643,6 @@
             case 'PLAYER_LIST': 
                 players = data.list;
                 updatePlayerListUI();
-                break;
-            case 'MUSIC':
-                document.getElementById('bg-music').src = data.data;
-                showToast("🎵 Música compartida por el Host recibida");
                 break;
             case 'READY': 
                 let p = players.find(player => player.id === data.id);
@@ -726,7 +697,7 @@
                         sfxEliminated();
                         triggerGlitchEffect();
                         myData.eliminated = true;
-                        showToast("⚠️ ¡CÓDIGO DESCIFRADO! Has sido eliminado.");
+                        showToast("⚠️ CODE DECRYPTED! You have been eliminated.");
                         
                         if (isHost) {
                             markEliminated(myId);
@@ -766,16 +737,10 @@
     }
 
     function toggleReady() {
-        const codeInput = document.getElementById('my-secret-code').value;
-        if (codeInput.length !== 6) return alert("Ingresa exactamente 6 dígitos para tu código secreto.");
-        
-        myData.code = codeInput;
         myData.ready = true;
         
-        document.getElementById('hud-my-code').innerText = myData.code;
-        document.getElementById('ready-btn').innerText = "ESPERANDO A LOS DEMÁS...";
+        document.getElementById('ready-btn').innerText = "WAITING FOR OTHERS...";
         document.getElementById('ready-btn').disabled = true;
-        document.getElementById('my-secret-code').disabled = true;
 
         if (isHost) {
             let self = players.find(p => p.id === myId);
@@ -786,6 +751,39 @@
         } else {
             conn.send({ type: 'READY', id: myId, ready: true });
         }
+    }
+
+    // New "RECODE" Skill function
+    let recodeCooldown = false;
+    function useRecodeSkill() {
+        if (recodeCooldown || myData.eliminated) return;
+        const newCode = prompt("Enter your new 6-digit code:");
+        if (!newCode || newCode.length !== 6 || !/^\d+$/.test(newCode)) {
+            alert("Invalid code. It must be exactly 6 digits.");
+            return;
+        }
+        
+        myData.code = newCode;
+        document.getElementById('hud-my-code').innerText = myData.code;
+        showToast("Code successfully updated!");
+        
+        recodeCooldown = true;
+        const btn = document.getElementById('btn-recode');
+        btn.disabled = true;
+        let timeLeft = 20;
+        btn.innerText = `RECODE (${timeLeft}s)`;
+        
+        const timer = setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                recodeCooldown = false;
+                btn.disabled = false;
+                btn.innerText = "RECODE (READY)";
+            } else {
+                btn.innerText = `RECODE (${timeLeft}s)`;
+            }
+        }, 1000);
     }
 
     function checkAllReady() {
@@ -821,7 +819,7 @@
     function updatePlayerListUI() {
         const list = document.getElementById('player-list');
         list.innerHTML = players.map(p => {
-            let status = p.ready ? "<span style='color:var(--hacker-green);'>[LISTO]</span>" : "<span style='color:var(--cyber-yellow);'>[Esperando...]</span>";
+            let status = p.ready ? "<span style='color:var(--hacker-green);'>[READY]</span>" : "<span style='color:var(--cyber-yellow);'>[Waiting...]</span>";
             return `<div>> ${p.name} ${status}</div>`;
         }).join('');
     }
@@ -846,7 +844,7 @@
         }
 
         if (id === myId) {
-            document.getElementById('hud-my-code').innerText += " (ELIMINADO)";
+            document.getElementById('hud-my-code').innerText += " (ELIMINATED)";
             document.getElementById('hud-my-code').style.color = "var(--cyber-red)";
         }
     }
@@ -859,13 +857,12 @@
             showVictory(winner.id, winner.name);
             broadcast({ type: 'GAME_OVER', winnerId: winner.id, winnerName: winner.name });
         } else if (activePlayers.length === 0) {
-            showVictory(null, "Nadie");
-            broadcast({ type: 'GAME_OVER', winnerId: null, winnerName: "Nadie" });
+            showVictory(null, "Nobody");
+            broadcast({ type: 'GAME_OVER', winnerId: null, winnerName: "Nobody" });
         }
     }
 
     function showVictory(winnerId, winnerName) {
-        document.getElementById('bg-music').pause();
         sfxWin();
 
         document.getElementById('victory-modal').classList.remove('hidden');
@@ -873,14 +870,14 @@
         const vicSub = document.getElementById('victory-subtitle');
 
         if (winnerId === myId) {
-            vicTitle.innerText = "¡HACKER SUPREMO!";
+            vicTitle.innerText = "SUPREME HACKER!";
             vicTitle.style.color = "var(--cyber-yellow)";
-            vicSub.innerText = "Has descifrado a la competencia y tomado el control.";
+            vicSub.innerText = "You decrypted the competition and took control.";
             addTrophy();
         } else {
-            vicTitle.innerText = "PARTIDA FINALIZADA";
+            vicTitle.innerText = "MATCH FINISHED";
             vicTitle.style.color = "var(--cyber-cyan)";
-            vicSub.innerText = `El hacker victorioso es: ${winnerName}`;
+            vicSub.innerText = `The victorious hacker is: ${winnerName}`;
         }
 
         if (isHost) {
@@ -904,11 +901,9 @@
         document.getElementById('victory-modal').classList.add('hidden');
         document.getElementById('lobby-modal').classList.remove('hidden');
         
-        document.getElementById('my-secret-code').value = '';
-        document.getElementById('my-secret-code').disabled = false;
-        document.getElementById('ready-btn').innerText = "ESTOY LISTO";
+        document.getElementById('ready-btn').innerText = "I'M READY";
         document.getElementById('ready-btn').disabled = false;
-        document.getElementById('hud-my-code').innerText = "******";
+        document.getElementById('hud-my-code').innerText = myData.code;
         document.getElementById('hud-my-code').style.color = "var(--cyber-cyan)";
         document.getElementById('chat-box').innerHTML = '';
 
@@ -929,7 +924,7 @@
         if (!msg) return;
 
         const data = { type: 'CHAT', name: myData.name, msg: msg };
-        displayChat("Tú", msg);
+        displayChat("You", msg);
 
         if (isHost) broadcast(data);
         else if (conn) conn.send(data);
@@ -954,14 +949,14 @@
 
     // Tutorial
     const tutSteps = [
-        "Bienvenido a Hack the Code 3D. Explora la base cibernética con WASD o con la pantalla táctil.",
-        "Tu objetivo es descubrir y hackear los códigos de 6 dígitos de tus rivales antes de que descubran el tuyo.",
-        "Asigna tu código secreto en el Lobby. ¡Mantenlo oculto de la vista de otros!",
-        "Una vez dentro del complejo, localiza la posición física de un hacker rival.",
-        "Acércate a menos de 3 metros de tu objetivo para habilitar la Consola de Hackeo con la tecla [E].",
-        "Introduce tu combinación en la terminal holográfica para iniciar el ataque de fuerza bruta.",
-        "Recibirás respuestas instantáneas: ✅ indica dígito y posición correcta. ❌ indica incorrecto.",
-        "¡El último hacker sobreviviente en el servidor ganará la partida y sumará trofeos!"
+        "Welcome to Hack the Code 3D. Explore the cyber base with WASD or touch screen.",
+        "Your objective is to discover and hack the 6-digit codes of your rivals before they discover yours.",
+        "Set your secret code in the Menu. Keep it hidden from others!",
+        "Once inside the complex, locate the physical position of a rival hacker.",
+        "Get within 3 meters of your target to enable the Hack Console with the [E] key.",
+        "Enter your combination into the holographic terminal to start the brute force attack.",
+        "You will receive instant feedback: ✅ indicates correct digit and position. ❌ indicates incorrect.",
+        "The last surviving hacker on the server will win the match and earn trophies!"
     ];
     let currentTutStep = 0;
     function openTutorial() {
@@ -1514,7 +1509,7 @@
 
     function submitTerminalHack() {
         const input = document.getElementById('terminal-guess-input').value;
-        if (input.length !== 6) return alert("El código debe ser de 6 números.");
+        if (input.length !== 6) return alert("The code must be 6 numbers.");
         if (!terminalTargetId) return;
 
         sfxHack();
@@ -1536,11 +1531,8 @@
         else sfxMiss();
 
         const list = document.getElementById('terminal-feedback-list');
-        const row = document.createElement('div');
-        row.className = 'feedback-row';
-        row.innerHTML = `<span>CLAVE: <strong>${data.guess}</strong></span> <span>${data.result.join('')}</span>`;
-        list.appendChild(row);
-        list.scrollTop = list.scrollHeight;
+        // OVERWRITING content to only display the current code guess as requested
+        list.innerHTML = `<div class="feedback-row"><span>KEY: <strong>${data.guess}</strong></span> <span>${data.result.join('')}</span></div>`;
     }
 
     /* Explosión de Datos / Chispas al eliminar */
@@ -1648,13 +1640,7 @@
         document.getElementById('lobby-modal').classList.add('hidden');
         document.getElementById('chat-container').classList.remove('hidden');
 
-        // Audio BGM
-        const bgAudio = document.getElementById('bg-music');
-        if(bgAudio.src && bgAudio.src !== window.location.href) {
-            bgAudio.play().catch(e => console.log("Audio prevent", e));
-        }
-
-        showToast("⚔️ BASE DE HACKEO ACTIVA. ¡UBICA A TUS RIVALES!");
+        showToast("⚔️ HACK BASE ACTIVE. LOCATE YOUR RIVALS!");
     }
 
     function onWindowResize() {
@@ -1671,4 +1657,3 @@
 
 </body>
 </html>
-
