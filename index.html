@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Hack the Code</title>
+    <script>
+    if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js')
+      .then(() => console.log('Service Worker registrado correctamente'))
+      .catch(err => console.log('Error al registrar:', err));
+  }
+</script>
+
+<!-- No olvides vincular el manifest en el <head> -->
+<link rel="manifest" href="manifest.json">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     <style>
         :root {
