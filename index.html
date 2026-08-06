@@ -20,6 +20,7 @@
             --hacker-green: #00ff41;
             --hacker-cyan: #00f3ff;
             --hacker-amber: #ffb700;
+            --hacker-purple: #bd00ff;
             --dark-bg: #0d0d0d;
         }
         * { box-sizing: border-box; }
@@ -32,7 +33,21 @@
             align-items: center;
             margin: 0;
             padding: 20px;
+            overflow-x: hidden;
         }
+
+        /* Matrix Code Rain Canvas Background */
+        #matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: -1;
+            pointer-events: none;
+            opacity: 0.25;
+        }
+
         .container { width: 100%; max-width: 900px; text-align: center; position: relative; }
         .hidden { display: none !important; }
         
@@ -42,10 +57,10 @@
             padding: 20px;
             margin-bottom: 20px;
             box-shadow: 0 0 10px var(--hacker-green);
-            background: #000;
+            background: rgba(0, 0, 0, 0.9);
             border-radius: 4px;
         }
-        input, button, textarea {
+        input, button, textarea, select {
             background: black;
             color: var(--hacker-green);
             border: 1px solid var(--hacker-green);
@@ -54,7 +69,34 @@
             font-family: inherit;
         }
         button:hover { background: var(--hacker-green); color: black; cursor: pointer; }
-        button:disabled { border-color: #555; color: #555; cursor: not-allowed; background: black; }
+        button:disabled { border-color: #555 !important; color: #555 !important; cursor: not-allowed; background: black !important; box-shadow: none !important; }
+
+        /* Ability Selector Styles */
+        .ability-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+            margin-top: 10px;
+            text-align: left;
+        }
+        .ability-card {
+            border: 1px solid var(--hacker-green);
+            padding: 10px;
+            border-radius: 4px;
+            background: #000;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+        }
+        .ability-card:hover {
+            border-color: var(--hacker-cyan);
+            background: rgba(0, 243, 255, 0.08);
+        }
+        .ability-card input[type="radio"] {
+            margin-top: 3px;
+        }
 
         /* Profile Badge */
         #profile-badge {
@@ -64,7 +106,7 @@
             border: 1px solid var(--hacker-green);
             padding: 8px 12px;
             font-weight: bold;
-            background: rgba(0,0,0,0.8);
+            background: rgba(0,0,0,0.85);
             z-index: 10;
         }
 
@@ -81,6 +123,7 @@
             display: flex; 
             flex-direction: column; 
             box-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
+            background: rgba(0, 0, 0, 0.9);
         }
         .eliminated { opacity: 0.3; text-decoration: line-through; border-color: gray; pointer-events: none; }
         .ready-text { color: var(--hacker-amber); font-size: 0.85em; }
@@ -103,7 +146,7 @@
             font-weight: bold;
         }
 
-        /* Skill Button */
+        /* Dynamic Skill Button Theme Colors */
         .recode-btn {
             border-color: var(--hacker-amber) !important;
             color: var(--hacker-amber) !important;
@@ -114,6 +157,36 @@
             background: var(--hacker-amber) !important;
             color: black !important;
             box-shadow: 0 0 10px var(--hacker-amber);
+        }
+        .firewall-btn {
+            border-color: var(--hacker-cyan) !important;
+            color: var(--hacker-cyan) !important;
+            font-weight: bold;
+        }
+        .firewall-btn:hover:not(:disabled) {
+            background: var(--hacker-cyan) !important;
+            color: black !important;
+            box-shadow: 0 0 10px var(--hacker-cyan);
+        }
+        .scanner-btn {
+            border-color: #a6ff00 !important;
+            color: #a6ff00 !important;
+            font-weight: bold;
+        }
+        .scanner-btn:hover:not(:disabled) {
+            background: #a6ff00 !important;
+            color: black !important;
+            box-shadow: 0 0 10px #a6ff00;
+        }
+        .virus-btn {
+            border-color: var(--hacker-purple) !important;
+            color: var(--hacker-purple) !important;
+            font-weight: bold;
+        }
+        .virus-btn:hover:not(:disabled) {
+            background: var(--hacker-purple) !important;
+            color: black !important;
+            box-shadow: 0 0 10px var(--hacker-purple);
         }
 
         /* Notebook Section */
@@ -168,16 +241,17 @@
             padding: 10px;
             margin-top: 15px;
             font-size: 0.9em;
+            background: rgba(0, 0, 0, 0.9);
         }
 
         /* Modals & Overlays */
-        #tutorial-modal, #recode-modal {
+        #tutorial-modal, #recode-modal, #scanner-modal, #virus-modal {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
             z-index: 1000;
-            max-width: 420px;
+            max-width: 440px;
             width: 92%;
             background: #000;
             border-color: var(--hacker-cyan);
@@ -190,6 +264,9 @@
     </style>
 </head>
 <body>
+
+<!-- Animated Code Rain Background Canvas -->
+<canvas id="matrix-canvas"></canvas>
 
 <div id="profile-badge">🏆 Trophies: <span id="trophy-count">0</span></div>
 
@@ -214,6 +291,29 @@
         
         <div id="qr-container" style="margin: 15px 0;"></div>
 
+        <!-- Ability Selection System -->
+        <div style="margin: 15px 0; border: 1px solid var(--hacker-cyan); padding: 12px; background: rgba(0, 243, 255, 0.05); text-align: left;">
+            <h4 style="margin: 0 0 8px 0; color: var(--hacker-cyan);">&gt; CHOOSE YOUR CLASS ABILITY (SELECT 1):</h4>
+            <div class="ability-grid">
+                <label class="ability-card">
+                    <input type="radio" name="hacker-ability" value="recode" checked onchange="selectAbility('recode')">
+                    <span>⚡ <strong>RECODE</strong><br><small style="color:#aaa;">Change secret code (30s CD)</small></span>
+                </label>
+                <label class="ability-card">
+                    <input type="radio" name="hacker-ability" value="firewall" onchange="selectAbility('firewall')">
+                    <span>🛡️ <strong>FIREWALL</strong><br><small style="color:#aaa;">Block 1 attack (40s CD)</small></span>
+                </label>
+                <label class="ability-card">
+                    <input type="radio" name="hacker-ability" value="scanner" onchange="selectAbility('scanner')">
+                    <span>🔍 <strong>SCANNER</strong><br><small style="color:#aaa;">Reveal 1 digit (45s CD)</small></span>
+                </label>
+                <label class="ability-card">
+                    <input type="radio" name="hacker-ability" value="virus" onchange="selectAbility('virus')">
+                    <span>👾 <strong>VIRUS</strong><br><small style="color:#aaa;">Corrupt rival clues (35s CD)</small></span>
+                </label>
+            </div>
+        </div>
+
         <p>Your Secret Code (6 digits): 
             <input type="password" id="my-secret-code" maxlength="6" pattern="\d{6}" placeholder="123456" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
         </p>
@@ -229,7 +329,7 @@
                 <h4 style="margin:0;">YOUR CODE: <span id="show-my-code" style="color: white; letter-spacing: 2px;">******</span></h4>
             </div>
             <div>
-                <button id="recode-btn" class="recode-btn" onclick="openRecodeModal()">⚡ RECODE (READY)</button>
+                <button id="recode-btn" class="recode-btn" onclick="useActiveSkill()">⚡ RECODE (READY)</button>
             </div>
         </div>
 
@@ -243,7 +343,7 @@
             <div class="scratchpad-digits" id="scratchpad">
                 <!-- Generated dynamically -->
             </div>
-            <textarea id="notebook-textarea" placeholder="Type candidate codes, logic notes, or rival patterns here..."></textarea>
+            <textarea id="notebook-textarea" placeholder="Type candidate codes, logic notes, scanner intel, or rival patterns here..."></textarea>
         </div>
     </div>
 
@@ -283,7 +383,79 @@
     <button onclick="closeRecodeModal()" style="border-color: gray; color: gray;">Cancel</button>
 </div>
 
+<!-- Scanner Skill Modal -->
+<div id="scanner-modal" class="card hidden">
+    <h3 style="color: #a6ff00;">🔍 SCANNER INTEL</h3>
+    <p style="font-size: 0.85em;">Select a rival and a target position (1-6) to intercept and reveal that digit!</p>
+    <label>Rival Target: <select id="scan-target-select"></select></label>
+    <br>
+    <label>Position: 
+        <select id="scan-pos-select">
+            <option value="0">Position 1</option>
+            <option value="1">Position 2</option>
+            <option value="2">Position 3</option>
+            <option value="3">Position 4</option>
+            <option value="4">Position 5</option>
+            <option value="5">Position 6</option>
+        </select>
+    </label>
+    <br><br>
+    <button onclick="confirmScanner()" style="border-color: #a6ff00; color: #a6ff00;">EXECUTE SCAN</button>
+    <button onclick="closeScannerModal()" style="border-color: gray; color: gray;">Cancel</button>
+</div>
+
+<!-- Virus Skill Modal -->
+<div id="virus-modal" class="card hidden">
+    <h3 style="color: var(--hacker-purple);">👾 VIRUS INJECTION</h3>
+    <p style="font-size: 0.85em;">Select a rival to infect. Two feedback clues on their next guess attempt will be glitched!</p>
+    <label>Rival Target: <select id="virus-target-select"></select></label>
+    <br><br>
+    <button onclick="confirmVirus()" style="border-color: var(--hacker-purple); color: var(--hacker-purple);">DEPLOY VIRUS</button>
+    <button onclick="closeVirusModal()" style="border-color: gray; color: gray;">Cancel</button>
+</div>
+
 <script>
+    // --- MATRIX DIGITAL RAIN BACKGROUND ---
+    const matrixCanvas = document.getElementById('matrix-canvas');
+    const matrixCtx = matrixCanvas ? matrixCanvas.getContext('2d') : null;
+    let matrixCols = 0;
+    let matrixYPos = [];
+
+    function resizeMatrix() {
+        if (!matrixCanvas) return;
+        matrixCanvas.width = window.innerWidth;
+        matrixCanvas.height = window.innerHeight;
+        matrixCols = Math.floor(matrixCanvas.width / 20) + 1;
+        matrixYPos = Array(matrixCols).fill(0).map(() => Math.floor(Math.random() * -100));
+    }
+
+    function drawMatrixRain() {
+        if (!matrixCanvas || !matrixCtx) return;
+        matrixCtx.fillStyle = 'rgba(13, 13, 13, 0.1)';
+        matrixCtx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+        
+        matrixCtx.fillStyle = '#00ff41';
+        matrixCtx.font = '15pt monospace';
+        
+        const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZｦｱｳｴｵｶｷｹｺｻｼｽｾｿﾀﾂﾃﾅﾆﾇﾈﾊﾋﾎﾏﾐﾑﾒﾓﾔﾕﾗﾘﾜ';
+        
+        matrixYPos.forEach((y, index) => {
+            const char = chars.charAt(Math.floor(Math.random() * chars.length));
+            const x = index * 20;
+            matrixCtx.fillText(char, x, y);
+            
+            if (y > 100 + Math.random() * 10000) {
+                matrixYPos[index] = 0;
+            } else {
+                matrixYPos[index] = y + 20;
+            }
+        });
+    }
+
+    window.addEventListener('resize', resizeMatrix);
+    resizeMatrix();
+    setInterval(drawMatrixRain, 50);
+
     // --- SFX AUDIO ENGINE (WEB AUDIO API) ---
     let audioCtx;
     function initAudio() {
@@ -311,6 +483,11 @@
     function sfxMiss() { initAudio(); playTone(200, 'sawtooth', 0.3, 0.1); }
     function sfxEliminated() { initAudio(); playTone(300, 'square', 0.5, 0.1); setTimeout(()=>playTone(200, 'square', 0.5, 0.1), 250); }
     function sfxWin() { initAudio(); [523, 659, 783, 1046].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.3, 0.1), i*150)); }
+    
+    // New Skill Audio Effects
+    function sfxFirewall() { initAudio(); playTone(800, 'sine', 0.15, 0.1); setTimeout(()=>playTone(1200, 'sine', 0.25, 0.1), 120); }
+    function sfxScan() { initAudio(); playTone(1200, 'sine', 0.08, 0.08); setTimeout(()=>playTone(1800, 'sine', 0.08, 0.08), 80); setTimeout(()=>playTone(2400, 'sine', 0.12, 0.08), 160); }
+    function sfxVirus() { initAudio(); playTone(300, 'sawtooth', 0.15, 0.1); setTimeout(()=>playTone(150, 'sawtooth', 0.2, 0.1), 120); setTimeout(()=>playTone(80, 'square', 0.25, 0.1), 240); }
 
     document.addEventListener('click', (e) => { if(e.target.tagName === 'BUTTON') sfxClick(); });
 
@@ -319,11 +496,11 @@
         "Welcome to Hack the Code! Your intellect is your sharpest exploit.",
         "The objective is to decrypt and breach your rivals' secret 6-digit codes before they breach yours.",
         "To begin, create a room as 'Host' or enter a 'Room ID' to join an existing simulation.",
-        "Once in the lobby, set your secret 6-digit code. Keep it strictly classified!",
+        "In the lobby, pick 1 of 4 Special Hacker Abilities and set your secret 6-digit code. Keep it strictly classified!",
         "When all hackers are marked READY, the game begins and rivals will appear on your grid.",
         "Enter a 6-digit guess into a rival's hack panel and press 'HACK'.",
-        "Feedback Guide:\n✅ = Digit is correct and in the right position.\n⚠️ = Digit exists in rival's code, but in a DIFFERENT position.\n❌ = Digit is NOT in rival's code.",
-        "Special Features:\n⚡ RECODE: Change your secret code every 30 seconds!\n📓 NOTEBOOK: Track scratchpad numbers and write logic notes."
+        "Feedback Guide:\n✅ = Digit is correct and in the right position.\n⚠️ = Digit exists in rival's code, but in a DIFFERENT position.\n❌ = Digit is NOT in rival's code.\n👾 = Corrupted clue caused by a Virus attack.",
+        "4 CLASS ABILITIES (Select 1 in Lobby):\n⚡ RECODE: Change secret code (30s CD).\n🛡️ FIREWALL: Deploy shield to block 1 incoming attack (40s CD).\n🔍 SCANNER: Scan & reveal 1 exact digit of a rival (45s CD).\n👾 VIRUS: Infect a rival to corrupt 2 clues on their next guess (35s CD)."
     ];
     let currentTutStep = 0;
     function openTutorial() {
@@ -352,15 +529,30 @@
     let connections = []; 
     let myId;
     let isHost = false;
-    let myData = { name: '', code: '', ready: false, eliminated: false };
+    let myData = { 
+        name: '', 
+        code: '', 
+        ready: false, 
+        eliminated: false,
+        selectedSkill: 'recode',
+        firewallActive: false,
+        virusInfected: false
+    };
     let players = [];
     let trophies = parseInt(localStorage.getItem('hackTheCode_trophies')) || 0;
     
     // Skill state
     let recodeCooldown = 0;
     let recodeInterval = null;
+    let skillCooldown = 0;
+    let skillInterval = null;
 
     document.getElementById('trophy-count').innerText = trophies;
+
+    function selectAbility(skillName) {
+        myData.selectedSkill = skillName;
+        sfxClick();
+    }
 
     // --- PEERJS NETWORKING ---
 
@@ -469,6 +661,30 @@
             case 'GUESS':
                 // Received attack: evaluate against current myData.code
                 if (data.to === myId) {
+                    // Check Firewall Defense
+                    if (myData.firewallActive) {
+                        myData.firewallActive = false;
+                        updateSkillButtonUI();
+                        sfxFirewall();
+                        displayChat("SYSTEM", "🛡️ Firewall blocked an incoming hack attempt!");
+                        
+                        let blockFeedback = { 
+                            type: 'GUESS_RESULT', 
+                            from: myId, 
+                            to: data.from, 
+                            guess: data.val, 
+                            result: ['🛡️','B','L','O','C','K'],
+                            blocked: true 
+                        };
+                        if (isHost) {
+                            let attackerConn = connections.find(c => c.peer === data.from);
+                            if (attackerConn) attackerConn.send(blockFeedback);
+                        } else {
+                            conn.send(blockFeedback);
+                        }
+                        return;
+                    }
+
                     let secret = myData.code.split('');
                     let guess = data.val.split('');
                     let resultArr = new Array(6).fill('❌');
@@ -536,6 +752,56 @@
                     if (attackerConn) attackerConn.send(data);
                 }
                 break;
+            case 'SCAN_REQ':
+                if (data.to === myId) {
+                    const posIndex = parseInt(data.pos);
+                    const digitVal = (myData.code && myData.code[posIndex]) ? myData.code[posIndex] : '?';
+                    const resData = {
+                        type: 'SCAN_RES',
+                        from: myId,
+                        to: data.from,
+                        pos: posIndex,
+                        digit: digitVal,
+                        targetName: myData.name
+                    };
+                    if (isHost) {
+                        let attackerConn = connections.find(c => c.peer === data.from);
+                        if (attackerConn) attackerConn.send(resData);
+                    } else {
+                        conn.send(resData);
+                    }
+                } else if (isHost) {
+                    let targetConn = connections.find(c => c.peer === data.to);
+                    if (targetConn) targetConn.send(data);
+                }
+                break;
+            case 'SCAN_RES':
+                if (data.to === myId) {
+                    sfxScan();
+                    const posDisplay = parseInt(data.pos) + 1;
+                    const targetName = data.targetName || "Target";
+                    alert(`🔍 SCAN INTEL ACQUIRED:\n\nRival: ${targetName}\nDigit #${posDisplay} = '${data.digit}'`);
+                    
+                    const notebook = document.getElementById('notebook-textarea');
+                    if (notebook) {
+                        notebook.value += `\n[INTEL] ${targetName} Pos #${posDisplay} = ${data.digit}`;
+                    }
+                } else if (isHost) {
+                    let attackerConn = connections.find(c => c.peer === data.to);
+                    if (attackerConn) attackerConn.send(data);
+                }
+                break;
+            case 'VIRUS_INFECT':
+                if (data.to === myId) {
+                    myData.virusInfected = true;
+                    sfxVirus();
+                    displayChat("SYSTEM WARNING", "👾 Virus payload detected! Your next hack feedback will be glitched!");
+                    alert("👾 WARNING! A rival injected a virus into your system! Your next guess feedback will be corrupted.");
+                } else if (isHost) {
+                    let targetConn = connections.find(c => c.peer === data.to);
+                    if (targetConn) targetConn.send(data);
+                }
+                break;
             case 'ELIMINATED':
                 markEliminated(data.playerId);
                 checkWinCondition();
@@ -597,9 +863,11 @@
         
         document.getElementById('show-my-code').innerText = myData.code;
         myData.eliminated = false;
+        myData.firewallActive = false;
+        myData.virusInfected = false;
         
         setupScratchpad();
-        initRecodeSkill();
+        initSkillEngine();
         renderRivals();
     }
 
@@ -641,13 +909,31 @@
     }
 
     function handleFeedback(data) {
-        if (data.result.includes('✅') || data.result.includes('⚠️')) sfxHit();
+        if (data.blocked) {
+            sfxMiss();
+            const feedbackDiv = document.getElementById(`feedback-${data.from}`);
+            if (feedbackDiv) {
+                feedbackDiv.innerHTML = `<div class="feedback-row" style="color: var(--hacker-cyan);">🛡️ BLOCKED BY FIREWALL</div>`;
+            }
+            return;
+        }
+
+        let displayResult = [...data.result];
+
+        // Apply Virus Corruption to Attacker Feedback if infected
+        if (myData.virusInfected) {
+            myData.virusInfected = false;
+            let indices = [0, 1, 2, 3, 4, 5].sort(() => 0.5 - Math.random()).slice(0, 2);
+            indices.forEach(i => displayResult[i] = '👾');
+            displayChat("SYSTEM WARNING", "👾 Virus active: Your feedback output was corrupted!");
+        }
+
+        if (displayResult.includes('✅') || displayResult.includes('⚠️')) sfxHit();
         else sfxMiss();
 
         const feedbackDiv = document.getElementById(`feedback-${data.from}`);
         if (feedbackDiv) {
-            // ONLY show the current/latest guess attempt
-            feedbackDiv.innerHTML = `<div class="feedback-row">${data.guess} ➔ ${data.result.join('')}</div>`;
+            feedbackDiv.innerHTML = `<div class="feedback-row">${data.guess} ➔ ${displayResult.join('')}</div>`;
         }
     }
 
@@ -710,15 +996,85 @@
         document.getElementById('trophy-count').innerText = trophies;
     }
 
-    // --- RECODE SKILL ENGINE ---
+    // --- SKILL ENGINE & MODALS ---
 
-    function initRecodeSkill() {
-        recodeCooldown = 0;
-        updateRecodeButton();
+    function initSkillEngine() {
+        skillCooldown = 0;
+        if (skillInterval) clearInterval(skillInterval);
+        updateSkillButtonUI();
     }
 
+    function getSkillIcon(skill) {
+        switch(skill) {
+            case 'firewall': return '🛡️';
+            case 'scanner': return '🔍';
+            case 'virus': return '👾';
+            default: return '⚡';
+        }
+    }
+
+    function updateSkillButtonUI() {
+        const btn = document.getElementById('recode-btn');
+        if (!btn) return;
+
+        btn.className = `recode-btn ${myData.selectedSkill}-btn`;
+        const icon = getSkillIcon(myData.selectedSkill);
+        const skillNameUpper = myData.selectedSkill.toUpperCase();
+
+        if (myData.eliminated) {
+            btn.innerText = `${icon} ${skillNameUpper} (DISABLED)`;
+            btn.disabled = true;
+            return;
+        }
+
+        if (skillCooldown > 0) {
+            btn.innerText = `${icon} ${skillNameUpper} (${skillCooldown}s)`;
+            btn.disabled = true;
+        } else if (myData.selectedSkill === 'firewall' && myData.firewallActive) {
+            btn.innerText = `🛡️ FIREWALL (ARMED)`;
+            btn.disabled = true;
+        } else {
+            btn.innerText = `${icon} ${skillNameUpper} (READY)`;
+            btn.disabled = false;
+        }
+    }
+
+    function startSkillCooldown(sec) {
+        skillCooldown = sec;
+        updateSkillButtonUI();
+        if (skillInterval) clearInterval(skillInterval);
+        skillInterval = setInterval(() => {
+            skillCooldown--;
+            updateSkillButtonUI();
+            if (skillCooldown <= 0) {
+                clearInterval(skillInterval);
+            }
+        }, 1000);
+    }
+
+    function useActiveSkill() {
+        if (skillCooldown > 0) return;
+        if (myData.eliminated) return alert("You are eliminated and cannot use skills.");
+
+        switch(myData.selectedSkill) {
+            case 'recode':
+                openRecodeModal();
+                break;
+            case 'firewall':
+                armFirewall();
+                break;
+            case 'scanner':
+                openScannerModal();
+                break;
+            case 'virus':
+                openVirusModal();
+                break;
+        }
+    }
+
+    // 1. Recode Skill
     function openRecodeModal() {
-        if (recodeCooldown > 0) return;
+        if (skillCooldown > 0) return;
         if (myData.eliminated) return alert("You are eliminated and cannot use skills.");
         
         document.getElementById('new-secret-code').value = '';
@@ -739,31 +1095,107 @@
         document.getElementById('show-my-code').innerText = myData.code;
         sfxHack();
         closeRecodeModal();
-
-        // Start 30s Cooldown
-        recodeCooldown = 30;
-        updateRecodeButton();
-
-        if (recodeInterval) clearInterval(recodeInterval);
-        recodeInterval = setInterval(() => {
-            recodeCooldown--;
-            updateRecodeButton();
-            if (recodeCooldown <= 0) {
-                clearInterval(recodeInterval);
-            }
-        }, 1000);
+        startSkillCooldown(30);
     }
 
-    function updateRecodeButton() {
-        const btn = document.getElementById('recode-btn');
-        if (!btn) return;
-        if (recodeCooldown > 0) {
-            btn.innerText = `⚡ RECODE (${recodeCooldown}s)`;
-            btn.disabled = true;
+    // 2. Firewall Skill
+    function armFirewall() {
+        if (skillCooldown > 0 || myData.firewallActive) return;
+        if (myData.eliminated) return alert("You are eliminated and cannot use skills.");
+
+        myData.firewallActive = true;
+        sfxFirewall();
+        updateSkillButtonUI();
+        displayChat("SYSTEM", "🛡️ Firewall shield activated! Next incoming attack will be blocked.");
+        startSkillCooldown(40);
+    }
+
+    // 3. Scanner Skill
+    function openScannerModal() {
+        if (skillCooldown > 0) return;
+        if (myData.eliminated) return alert("You are eliminated and cannot use skills.");
+
+        const select = document.getElementById('scan-target-select');
+        select.innerHTML = '';
+        
+        const targets = players.filter(p => p.id !== myId && !p.eliminated);
+        if (targets.length === 0) return alert("No active rivals available to scan.");
+
+        targets.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.innerText = p.name;
+            select.appendChild(opt);
+        });
+
+        document.getElementById('scanner-modal').classList.remove('hidden');
+        document.getElementById('modal-overlay').classList.remove('hidden');
+    }
+
+    function closeScannerModal() {
+        document.getElementById('scanner-modal').classList.add('hidden');
+        document.getElementById('modal-overlay').classList.add('hidden');
+    }
+
+    function confirmScanner() {
+        const targetId = document.getElementById('scan-target-select').value;
+        const pos = parseInt(document.getElementById('scan-pos-select').value);
+        
+        if (!targetId) return alert("Please select a target rival.");
+        
+        if (isHost) {
+            let targetConn = connections.find(c => c.peer === targetId);
+            if (targetConn) targetConn.send({ type: 'SCAN_REQ', from: myId, to: targetId, pos: pos });
         } else {
-            btn.innerText = "⚡ RECODE (READY)";
-            btn.disabled = false;
+            conn.send({ type: 'SCAN_REQ', from: myId, to: targetId, pos: pos });
         }
+        
+        sfxHack();
+        closeScannerModal();
+        startSkillCooldown(45);
+    }
+
+    // 4. Virus Skill
+    function openVirusModal() {
+        if (skillCooldown > 0) return;
+        if (myData.eliminated) return alert("You are eliminated and cannot use skills.");
+
+        const select = document.getElementById('virus-target-select');
+        select.innerHTML = '';
+        
+        const targets = players.filter(p => p.id !== myId && !p.eliminated);
+        if (targets.length === 0) return alert("No active rivals available to infect.");
+
+        targets.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.innerText = p.name;
+            select.appendChild(opt);
+        });
+
+        document.getElementById('virus-modal').classList.remove('hidden');
+        document.getElementById('modal-overlay').classList.remove('hidden');
+    }
+
+    function closeVirusModal() {
+        document.getElementById('virus-modal').classList.add('hidden');
+        document.getElementById('modal-overlay').classList.add('hidden');
+    }
+
+    function confirmVirus() {
+        const targetId = document.getElementById('virus-target-select').value;
+        if (!targetId) return alert("Please select a target rival.");
+
+        if (isHost) {
+            let targetConn = connections.find(c => c.peer === targetId);
+            if (targetConn) targetConn.send({ type: 'VIRUS_INFECT', from: myId, to: targetId });
+        } else {
+            conn.send({ type: 'VIRUS_INFECT', from: myId, to: targetId });
+        }
+
+        sfxVirus();
+        closeVirusModal();
+        startSkillCooldown(35);
     }
 
     // --- NOTEBOOK & SCRATCHPAD ---
@@ -800,10 +1232,14 @@
         document.getElementById('show-my-code').style.color = "white";
         document.getElementById('chat-box').innerHTML = '';
 
-        if (recodeInterval) clearInterval(recodeInterval);
+        if (skillInterval) clearInterval(skillInterval);
 
         myData.ready = false;
         myData.eliminated = false;
+        myData.firewallActive = false;
+        myData.virusInfected = false;
+        skillCooldown = 0;
+
         players.forEach(p => {
             p.ready = false;
             p.eliminated = false;
