@@ -2,498 +2,284 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Hack the Code 3D - Cyberpunk Multiplayer</title>
-    <!-- PeerJS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hack the Code</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
-    <!-- Three.js (r128) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         :root {
             --hacker-green: #00ff41;
-            --cyber-cyan: #00f3ff;
-            --cyber-red: #ff0055;
-            --cyber-yellow: #ffcc00;
-            --dark-bg: #050811;
+            --hacker-cyan: #00f3ff;
+            --hacker-amber: #ffb700;
+            --dark-bg: #0d0d0d;
         }
-
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-        }
-
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
+        * { box-sizing: border-box; }
+        body {
             background-color: var(--dark-bg);
             color: var(--hacker-green);
-            font-family: 'Courier New', Courier, monospace, sans-serif;
-        }
-
-        #canvas-container {
-            width: 100%;
-            height: 100%;
-            position: absolute;
-            top: 0;
-            left: 0;
-            z-index: 1;
-        }
-
-        /* HUD Overlay */
-        #hud {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 10;
-            pointer-events: none;
+            font-family: 'Courier New', Courier, monospace;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
-            padding: 15px;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
         }
-
-        .interactive {
-            pointer-events: auto;
-        }
-
-        /* Top Bar */
-        .top-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            width: 100%;
-        }
-
-        .hud-card {
-            background: rgba(5, 12, 22, 0.85);
+        .container { width: 100%; max-width: 900px; text-align: center; position: relative; }
+        .hidden { display: none !important; }
+        
+        /* Menu and Lobby */
+        .card {
             border: 1px solid var(--hacker-green);
-            box-shadow: 0 0 15px rgba(0, 255, 65, 0.2);
-            padding: 10px 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 0 10px var(--hacker-green);
+            background: #000;
             border-radius: 4px;
-            backdrop-filter: blur(5px);
         }
-
-        .trophy-badge {
-            color: var(--cyber-yellow);
-            font-weight: bold;
-            font-size: 1.1em;
-            text-shadow: 0 0 8px var(--cyber-yellow);
+        input, button, textarea {
+            background: black;
+            color: var(--hacker-green);
+            border: 1px solid var(--hacker-green);
+            padding: 10px;
+            margin: 5px;
+            font-family: inherit;
         }
+        button:hover { background: var(--hacker-green); color: black; cursor: pointer; }
+        button:disabled { border-color: #555; color: #555; cursor: not-allowed; background: black; }
 
-        /* Minimap */
-        #minimap-container {
-            width: 160px;
-            height: 160px;
-            border: 2px solid var(--cyber-cyan);
-            box-shadow: 0 0 15px var(--cyber-cyan);
-            border-radius: 50%;
-            overflow: hidden;
-            background: rgba(0, 10, 20, 0.9);
-            position: relative;
-        }
-
-        #minimap-canvas {
-            width: 100%;
-            height: 100%;
-        }
-
-        /* Interaction Prompt */
-        #interaction-prompt {
+        /* Profile Badge */
+        #profile-badge {
             position: absolute;
-            bottom: 120px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.9);
-            border: 2px solid var(--cyber-cyan);
-            box-shadow: 0 0 20px var(--cyber-cyan);
-            color: var(--cyber-cyan);
-            padding: 12px 25px;
-            font-size: 1.2em;
+            top: 10px;
+            right: 10px;
+            border: 1px solid var(--hacker-green);
+            padding: 8px 12px;
             font-weight: bold;
-            border-radius: 30px;
-            letter-spacing: 1px;
-            display: none;
-            animation: pulsePrompt 1.5s infinite alternate;
+            background: rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+
+        /* Game Screen Layout */
+        #rivals-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .rival-card { 
+            border: 1px solid #ff4444; 
+            padding: 12px; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
+        }
+        .eliminated { opacity: 0.3; text-decoration: line-through; border-color: gray; pointer-events: none; }
+        .ready-text { color: var(--hacker-amber); font-size: 0.85em; }
+
+        /* Single Feedback Display */
+        .feedback-box {
+            margin-top: 10px;
+            background: #111;
+            border: 1px dashed var(--hacker-green);
+            padding: 8px;
+            min-height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9em;
             text-align: center;
         }
+        .feedback-row {
+            letter-spacing: 2px;
+            font-weight: bold;
+        }
 
-        @keyframes pulsePrompt {
-            0% { transform: translateX(-50%) scale(0.98); box-shadow: 0 0 10px var(--cyber-cyan); }
-            100% { transform: translateX(-50%) scale(1.05); box-shadow: 0 0 25px var(--cyber-cyan); }
+        /* Skill Button */
+        .recode-btn {
+            border-color: var(--hacker-amber) !important;
+            color: var(--hacker-amber) !important;
+            font-weight: bold;
+            transition: all 0.2s ease;
+        }
+        .recode-btn:hover:not(:disabled) {
+            background: var(--hacker-amber) !important;
+            color: black !important;
+            box-shadow: 0 0 10px var(--hacker-amber);
+        }
+
+        /* Notebook Section */
+        .notebook-card {
+            border: 1px solid var(--hacker-cyan);
+            box-shadow: 0 0 10px rgba(0, 243, 255, 0.3);
+            text-align: left;
+            margin-bottom: 20px;
+        }
+        .notebook-card h4 {
+            margin: 0 0 10px 0;
+            color: var(--hacker-cyan);
+        }
+        .scratchpad-digits {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+        .digit-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-color: var(--hacker-cyan);
+            color: var(--hacker-cyan);
+            font-weight: bold;
+        }
+        .digit-btn.struck {
+            background: #333;
+            color: #777;
+            border-color: #555;
+            text-decoration: line-through;
+        }
+        #notebook-textarea {
+            width: 100%;
+            height: 90px;
+            resize: vertical;
+            border-color: var(--hacker-cyan);
+            color: var(--hacker-cyan);
+            font-size: 0.85em;
+        }
+
+        /* Chat */
+        #chat-box {
+            height: 140px;
+            overflow-y: auto;
+            border: 1px solid var(--hacker-green);
+            text-align: left;
+            padding: 10px;
+            margin-top: 15px;
+            font-size: 0.9em;
         }
 
         /* Modals & Overlays */
-        .modal-overlay {
+        #tutorial-modal, #recode-modal {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.85);
-            z-index: 100;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(8px);
-        }
-
-        .cyber-panel {
-            background: rgba(8, 15, 26, 0.95);
-            border: 2px solid var(--hacker-green);
-            box-shadow: 0 0 25px var(--hacker-green), inset 0 0 15px rgba(0,255,65,0.1);
-            padding: 25px;
-            max-width: 500px;
-            width: 90%;
-            border-radius: 8px;
-            text-align: center;
-            position: relative;
-        }
-
-        .cyber-panel-cyan {
-            border-color: var(--cyber-cyan);
-            box-shadow: 0 0 25px var(--cyber-cyan);
-        }
-
-        .cyber-panel-red {
-            border-color: var(--cyber-red);
-            box-shadow: 0 0 25px var(--cyber-red);
-        }
-
-        h1, h2, h3, h4 {
-            margin-top: 0;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-
-        input[type="text"], input[type="password"] {
-            background: rgba(0, 0, 0, 0.8);
-            color: var(--hacker-green);
-            border: 1px solid var(--hacker-green);
-            padding: 12px;
-            margin: 8px 0;
-            width: 100%;
-            font-family: inherit;
-            font-size: 1.1em;
-            outline: none;
-            border-radius: 4px;
-            text-align: center;
-            letter-spacing: 2px;
-        }
-
-        input:focus {
-            box-shadow: 0 0 10px var(--hacker-green);
-        }
-
-        button {
-            background: rgba(0, 20, 10, 0.9);
-            color: var(--hacker-green);
-            border: 1px solid var(--hacker-green);
-            padding: 12px 24px;
-            margin: 8px 4px;
-            font-family: inherit;
-            font-size: 1em;
-            font-weight: bold;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            border-radius: 4px;
-            letter-spacing: 1px;
-        }
-
-        button:hover {
-            background: var(--hacker-green);
-            color: #000;
-            box-shadow: 0 0 15px var(--hacker-green);
-        }
-
-        button:disabled {
-            border-color: #444;
-            color: #666;
-            background: #111;
-            cursor: not-allowed;
-            box-shadow: none;
-        }
-
-        .btn-cyan {
-            color: var(--cyber-cyan);
-            border-color: var(--cyber-cyan);
-        }
-        .btn-cyan:hover {
-            background: var(--cyber-cyan);
-            color: #000;
-            box-shadow: 0 0 15px var(--cyber-cyan);
-        }
-
-        .btn-red {
-            color: var(--cyber-red);
-            border-color: var(--cyber-red);
-        }
-        .btn-red:hover {
-            background: var(--cyber-red);
-            color: #fff;
-            box-shadow: 0 0 15px var(--cyber-red);
-        }
-
-        /* Hack Terminal Hologram UI */
-        #hack-terminal-modal {
-            display: none;
-        }
-
-        .terminal-feedback-box {
-            height: 150px;
-            overflow-y: auto;
-            border: 1px dashed var(--cyber-cyan);
-            background: rgba(0, 5, 15, 0.9);
-            margin: 15px 0;
-            padding: 10px;
-            font-size: 1.1em;
-            text-align: left;
-        }
-
-        .feedback-row {
-            padding: 4px;
-            border-bottom: 1px solid rgba(0, 243, 255, 0.2);
-            display: flex;
-            justify-content: space-between;
-        }
-
-        /* Chat & Bottom HUD */
-        .bottom-hud {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-            width: 100%;
-        }
-
-        #chat-container {
-            width: 320px;
-            max-width: 40vw;
-            background: rgba(5, 10, 20, 0.85);
-            border: 1px solid var(--hacker-green);
-            border-radius: 6px;
-            padding: 10px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        #chat-box {
-            height: 110px;
-            overflow-y: auto;
-            font-size: 0.85em;
-            margin-bottom: 8px;
-            border-bottom: 1px solid rgba(0, 255, 65, 0.3);
-            padding-right: 5px;
-        }
-
-        .chat-input-group {
-            display: flex;
-        }
-
-        .chat-input-group input {
-            padding: 6px;
-            font-size: 0.9em;
-            margin: 0;
-        }
-
-        .chat-input-group button {
-            padding: 6px 12px;
-            margin: 0 0 0 5px;
-            font-size: 0.85em;
-        }
-
-        /* Virtual Joystick for Touch Devices */
-        #touch-controls {
-            display: none;
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            width: 120px;
-            height: 120px;
-            background: rgba(0, 255, 65, 0.1);
-            border: 2px solid var(--hacker-green);
-            border-radius: 50%;
-            touch-action: none;
-            pointer-events: auto;
-        }
-
-        #joystick-stick {
-            width: 50px;
-            height: 50px;
-            background: var(--hacker-green);
-            border-radius: 50%;
-            position: absolute;
-            top: 35px;
-            left: 35px;
-            box-shadow: 0 0 10px var(--hacker-green);
-        }
-
-        /* Glitch Effect Overlay */
-        #glitch-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255, 0, 85, 0.15);
-            pointer-events: none;
-            display: none;
-            z-index: 50;
-        }
-
-        .hidden { display: none !important; }
-
-        /* Notification Toast */
-        #toast-notification {
-            position: fixed;
-            top: 80px;
+            top: 50%;
             left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.9);
-            border: 1px solid var(--cyber-yellow);
-            color: var(--cyber-yellow);
-            padding: 10px 20px;
-            border-radius: 4px;
-            box-shadow: 0 0 15px var(--cyber-yellow);
-            font-weight: bold;
-            z-index: 200;
-            display: none;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
+            max-width: 420px;
+            width: 92%;
+            background: #000;
+            border-color: var(--hacker-cyan);
+            box-shadow: 0 0 25px var(--hacker-cyan);
+        }
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85); z-index: 999;
         }
     </style>
 </head>
 <body>
 
-<div id="canvas-container"></div>
-<div id="glitch-overlay"></div>
+<div id="profile-badge">🏆 Trophies: <span id="trophy-count">0</span></div>
 
-<!-- Toast Notification -->
-<div id="toast-notification"></div>
+<div class="container">
+    <h1>&gt; HACK THE CODE _</h1>
 
-<!-- HUD -->
-<div id="hud">
-    <div class="top-bar">
-        <div class="hud-card">
-            <div><strong>HACKER ID:</strong> <span id="hud-my-name" style="color: #fff;">-</span></div>
-            <div><strong>CODE:</strong> <span id="hud-my-code" style="color: var(--cyber-cyan);">******</span></div>
-            <div class="trophy-badge">🏆 TROPHIES: <span id="trophy-count">0</span></div>
-            <button id="btn-recode" class="interactive" onclick="useRecodeSkill()" style="margin-top: 8px; padding: 6px; font-size: 0.8em; width: 100%;">RECODE (READY)</button>
-        </div>
+    <button onclick="openTutorial()" style="margin-bottom: 15px; border-color: var(--hacker-cyan); color: var(--hacker-cyan);">📖 How to Play?</button>
 
-        <div id="minimap-container" class="interactive">
-            <canvas id="minimap-canvas"></canvas>
-        </div>
+    <!-- Main Menu -->
+    <div id="menu" class="card">
+        <input type="text" id="username" placeholder="Enter Hacker Alias">
+        <br>
+        <button onclick="hostGame()">Create Game</button>
+        <br><br>
+        <input type="text" id="join-id" placeholder="Room ID">
+        <button onclick="joinGame()">Join Room</button>
     </div>
 
-    <!-- Notebook Feature -->
-    <div id="notebook-container" class="hud-card interactive" style="position: absolute; right: 20px; top: 180px; width: 220px; height: 250px; display: flex; flex-direction: column;">
-        <div style="font-size: 0.9em; font-weight: bold; margin-bottom: 5px; color: var(--cyber-yellow);">📋 NOTEBOOK</div>
-        <textarea placeholder="Write your clues here..." style="flex-grow: 1; background: rgba(0, 0, 0, 0.6); color: var(--hacker-green); border: 1px dashed var(--hacker-green); resize: none; font-family: inherit; padding: 8px; outline: none; border-radius: 4px;"></textarea>
+    <!-- Lobby -->
+    <div id="lobby" class="card hidden">
+        <h3>ROOM ID: <span id="display-id" style="color: white; user-select: all;"></span></h3>
+        
+        <div id="qr-container" style="margin: 15px 0;"></div>
+
+        <p>Your Secret Code (6 digits): 
+            <input type="password" id="my-secret-code" maxlength="6" pattern="\d{6}" placeholder="123456" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+        </p>
+        <button id="ready-btn" onclick="toggleReady()">I'M READY</button>
+        
+        <div id="player-list" style="margin-top: 20px; text-align: left;"></div>
     </div>
 
-    <!-- Interaction Trigger Prompt -->
-    <div id="interaction-prompt" class="interactive" onclick="triggerHackInteraction()">
-        ⌨️ PRESS [E] OR TAP HERE TO HACK <span id="target-player-name">---</span>
-    </div>
-
-    <div class="bottom-hud">
-        <div id="chat-container" class="interactive hidden">
-            <div id="chat-box"></div>
-            <div class="chat-input-group">
-                <input type="text" id="chat-input" placeholder="Message..." maxlength="80">
-                <button onclick="sendChatMessage()">>></button>
+    <!-- Active Game Screen -->
+    <div id="game-screen" class="hidden">
+        <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <h4 style="margin:0;">YOUR CODE: <span id="show-my-code" style="color: white; letter-spacing: 2px;">******</span></h4>
+            </div>
+            <div>
+                <button id="recode-btn" class="recode-btn" onclick="openRecodeModal()">⚡ RECODE (READY)</button>
             </div>
         </div>
 
-        <!-- Touch joystick for mobile -->
-        <div id="touch-controls">
-            <div id="joystick-stick"></div>
+        <!-- Rivals Grid -->
+        <div id="rivals-list"></div>
+
+        <!-- Hacker Notebook -->
+        <div class="card notebook-card">
+            <h4>📓 HACKER NOTEBOOK &amp; SCRATCHPAD</h4>
+            <div style="font-size:0.8em; margin-bottom: 6px; color: gray;">Click digits to cross off eliminated numbers:</div>
+            <div class="scratchpad-digits" id="scratchpad">
+                <!-- Generated dynamically -->
+            </div>
+            <textarea id="notebook-textarea" placeholder="Type candidate codes, logic notes, or rival patterns here..."></textarea>
         </div>
     </div>
-</div>
 
-<!-- MENU MODAL -->
-<div id="menu-modal" class="modal-overlay">
-    <div class="cyber-panel">
-        <h1 style="color: var(--hacker-green); text-shadow: 0 0 10px var(--hacker-green);">> HACK THE CODE 3D _</h1>
-        <p style="font-size: 0.9em; color: var(--cyber-cyan);">REAL-TIME CYBER MULTIPLAYER</p>
+    <!-- Victory Screen -->
+    <div id="victory-screen" class="card hidden" style="border-color: gold; box-shadow: 0 0 20px gold;">
+        <h2 id="victory-text" style="color: gold;"></h2>
+        <button id="btn-play-again" class="hidden" onclick="playAgain()">Play Again</button>
+        <button onclick="location.reload()">Exit to Main Menu</button>
+    </div>
 
-        <input type="text" id="username" placeholder="Hacker Name" maxlength="12">
-        <input type="password" id="my-secret-code" maxlength="6" pattern="\d{6}" placeholder="Secret Code (6 digits)" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-        <br><br>
-        <button onclick="hostGame()">CREATE ROOM (HOST)</button>
-        <br>
-        <div style="margin: 10px 0; color: #888;">--- OR JOIN ---</div>
-        <input type="text" id="join-id" placeholder="Room ID">
-        <button class="btn-cyan" onclick="joinGame()">JOIN ROOM</button>
-        <br><br>
-        <button class="btn-cyan" onclick="openTutorial()" style="font-size: 0.85em;">📖 Instruction Manual</button>
+    <!-- Chat Box -->
+    <div id="chat-container" class="hidden" style="width: 100%;">
+        <div id="chat-box"></div>
+        <input type="text" id="chat-input" placeholder="Send transmission..." style="width: 70%;">
+        <button onclick="sendChatMessage()">Send</button>
     </div>
 </div>
 
-<!-- LOBBY MODAL -->
-<div id="lobby-modal" class="modal-overlay hidden">
-    <div class="cyber-panel cyber-panel-cyan">
-        <h3>ACCESS ROOM: <span id="display-id" style="color: #fff; user-select: text;">-</span></h3>
-        <div id="qr-container" style="margin: 10px 0;"></div>
-        
-        <!-- Host Controls for audio removed as requested -->
+<!-- Modal Overlays -->
+<div id="modal-overlay" class="modal-overlay hidden"></div>
 
-        <button id="ready-btn" onclick="toggleReady()">I'M READY</button>
-
-        <div style="margin-top: 15px; text-align: left;">
-            <strong style="color: var(--cyber-cyan);">Hackers in the room:</strong>
-            <div id="player-list" style="max-height: 120px; overflow-y: auto; margin-top: 5px; font-size: 0.9em;"></div>
-        </div>
-    </div>
+<!-- Tutorial Modal -->
+<div id="tutorial-modal" class="card hidden">
+    <h3 style="color: var(--hacker-cyan);">TUTORIAL (<span id="tut-step">1</span>/8)</h3>
+    <p id="tut-text" style="min-height: 70px; font-size: 0.9em; text-align: left;"></p>
+    <button onclick="nextTutorial()">Next</button>
+    <button onclick="closeTutorial()" style="border-color: #ff4444; color: #ff4444;">Close</button>
 </div>
 
-<!-- HACK TERMINAL MODAL (IN-GAME 3D HOLOGRAPHIC) -->
-<div id="hack-terminal-modal" class="modal-overlay">
-    <div class="cyber-panel cyber-panel-cyan" style="max-width: 450px;">
-        <h3 style="color: var(--cyber-cyan);">ATTACK TERMINAL: <span id="terminal-target-name">---</span></h3>
-        <p style="font-size: 0.85em; color: #aaa;">Enter the 6-digit key to decrypt the rival terminal:</p>
-
-        <input type="text" id="terminal-guess-input" maxlength="6" placeholder="000000" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-        <button class="btn-cyan" onclick="submitTerminalHack()">EXECUTE HACK</button>
-
-        <div id="terminal-feedback-list" class="terminal-feedback-box"></div>
-
-        <button class="btn-red" onclick="closeTerminalHack()">CLOSE TERMINAL</button>
-    </div>
-</div>
-
-<!-- VICTORY / DEFEAT MODAL -->
-<div id="victory-modal" class="modal-overlay hidden">
-    <div id="victory-panel" class="cyber-panel">
-        <h2 id="victory-title" style="font-size: 1.8em;">VICTORY</h2>
-        <p id="victory-subtitle" style="font-size: 1.1em; color: #fff;"></p>
-        <br>
-        <button onclick="location.reload()">Exit to Menu</button>
-    </div>
-</div>
-
-<!-- TUTORIAL MODAL -->
-<div id="tutorial-modal" class="modal-overlay hidden">
-    <div class="cyber-panel cyber-panel-cyan">
-        <h3 style="color: var(--cyber-cyan);">INSTRUCTIONS (<span id="tut-step">1</span>/8)</h3>
-        <p id="tut-text" style="min-height: 80px; font-size: 1em; line-height: 1.4;"></p>
-        <button class="btn-cyan" onclick="nextTutorial()">Next</button>
-        <button class="btn-red" onclick="closeTutorial()">Close</button>
-    </div>
+<!-- Recode Skill Modal -->
+<div id="recode-modal" class="card hidden">
+    <h3 style="color: var(--hacker-amber);">⚡ RECODE SKILL</h3>
+    <p style="font-size: 0.85em;">Enter your new 6-digit secret code. This will update your encrypted code immediately!</p>
+    <input type="password" id="new-secret-code" maxlength="6" pattern="\d{6}" placeholder="New 6 digits" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+    <br><br>
+    <button onclick="confirmRecode()" style="border-color: var(--hacker-amber); color: var(--hacker-amber);">CONFIRM RECODE</button>
+    <button onclick="closeRecodeModal()" style="border-color: gray; color: gray;">Cancel</button>
 </div>
 
 <script>
-    /* =========================================================================
-       1. MOTOR AUDIO Y SINTETIZADOR BGM/SFX (WEB AUDIO API)
-       ========================================================================= */
+    // --- SFX AUDIO ENGINE (WEB AUDIO API) ---
     let audioCtx;
     function initAudio() {
         if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         if (audioCtx.state === 'suspended') audioCtx.resume();
     }
-
     function playTone(freq, type, duration, vol=0.1) {
         try {
             if (!audioCtx) return;
@@ -502,77 +288,95 @@
             osc.type = type;
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
             gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
             osc.connect(gain);
             gain.connect(audioCtx.destination);
             osc.start();
             osc.stop(audioCtx.currentTime + duration);
         } catch(e) {}
     }
-
-    function sfxClick() { initAudio(); playTone(800, 'sine', 0.08, 0.04); }
-    function sfxHack() { initAudio(); playTone(300, 'sawtooth', 0.2, 0.05); setTimeout(() => playTone(600, 'sawtooth', 0.2, 0.05), 80); }
-    function sfxHit() { initAudio(); playTone(1200, 'sine', 0.1, 0.08); setTimeout(() => playTone(1800, 'sine', 0.15, 0.08), 80); }
-    function sfxMiss() { initAudio(); playTone(150, 'sawtooth', 0.3, 0.1); }
-    function sfxStep() { initAudio(); playTone(100, 'triangle', 0.05, 0.015); }
-    function sfxEliminated() {
-        initAudio();
-        playTone(250, 'square', 0.4, 0.15);
-        setTimeout(() => playTone(150, 'square', 0.6, 0.15), 200);
-    }
-    function sfxWin() {
-        initAudio();
-        [523, 659, 783, 1046, 1318].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.3, 0.08), i * 120));
-    }
+    function sfxClick() { initAudio(); playTone(600, 'sine', 0.1, 0.05); }
+    function sfxHack() { initAudio(); playTone(400, 'sawtooth', 0.15, 0.05); }
+    function sfxHit() { initAudio(); playTone(1000, 'sine', 0.1, 0.1); setTimeout(()=>playTone(1500, 'sine', 0.2, 0.1), 100); }
+    function sfxMiss() { initAudio(); playTone(200, 'sawtooth', 0.3, 0.1); }
+    function sfxEliminated() { initAudio(); playTone(300, 'square', 0.5, 0.1); setTimeout(()=>playTone(200, 'square', 0.5, 0.1), 250); }
+    function sfxWin() { initAudio(); [523, 659, 783, 1046].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.3, 0.1), i*150)); }
 
     document.addEventListener('click', (e) => { if(e.target.tagName === 'BUTTON') sfxClick(); });
 
-    /* =========================================================================
-       2. VARIABLES DE ESTADO Y RED (PEERJS)
-       ========================================================================= */
-    let peer, conn, connections = [];
-    let myId = null;
+    // --- TUTORIAL ENGINE ---
+    const tutSteps = [
+        "Welcome to Hack the Code! Your intellect is your sharpest exploit.",
+        "The objective is to decrypt and breach your rivals' secret 6-digit codes before they breach yours.",
+        "To begin, create a room as 'Host' or enter a 'Room ID' to join an existing simulation.",
+        "Once in the lobby, set your secret 6-digit code. Keep it strictly classified!",
+        "When all hackers are marked READY, the game begins and rivals will appear on your grid.",
+        "Enter a 6-digit guess into a rival's hack panel and press 'HACK'.",
+        "Feedback Guide:\n✅ = Digit is correct and in the right position.\n⚠️ = Digit exists in rival's code, but in a DIFFERENT position.\n❌ = Digit is NOT in rival's code.",
+        "Special Features:\n⚡ RECODE: Change your secret code every 30 seconds!\n📓 NOTEBOOK: Track scratchpad numbers and write logic notes."
+    ];
+    let currentTutStep = 0;
+    function openTutorial() {
+        currentTutStep = 0;
+        document.getElementById('tutorial-modal').classList.remove('hidden');
+        document.getElementById('modal-overlay').classList.remove('hidden');
+        updateTutorial();
+    }
+    function nextTutorial() {
+        currentTutStep++;
+        if(currentTutStep >= tutSteps.length) closeTutorial();
+        else updateTutorial();
+    }
+    function updateTutorial() {
+        document.getElementById('tut-step').innerText = currentTutStep + 1;
+        document.getElementById('tut-text').innerText = tutSteps[currentTutStep];
+    }
+    function closeTutorial() {
+        document.getElementById('tutorial-modal').classList.add('hidden');
+        document.getElementById('modal-overlay').classList.add('hidden');
+    }
+
+    // --- GAME STATE ---
+    let peer;
+    let conn; 
+    let connections = []; 
+    let myId;
     let isHost = false;
-    let myData = { name: '', code: '', ready: false, eliminated: false, x: 0, z: 0, rot: 0, anim: 'idle' };
-    let players = []; 
-    let remotePlayerMeshes = {}; 
+    let myData = { name: '', code: '', ready: false, eliminated: false };
+    let players = [];
     let trophies = parseInt(localStorage.getItem('hackTheCode_trophies')) || 0;
+    
+    // Skill state
+    let recodeCooldown = 0;
+    let recodeInterval = null;
 
     document.getElementById('trophy-count').innerText = trophies;
 
-    // Toast Notice helper
-    function showToast(msg) {
-        const toast = document.getElementById('toast-notification');
-        toast.innerText = msg;
-        toast.style.display = 'block';
-        setTimeout(() => { toast.style.display = 'none'; }, 3000);
-    }
+    // --- PEERJS NETWORKING ---
 
     function hostGame() {
         const nameInput = document.getElementById('username').value.trim();
-        const codeInput = document.getElementById('my-secret-code').value;
-        if (!nameInput) return alert("Enter your Hacker name.");
-        if (codeInput.length !== 6) return alert("Enter exactly 6 digits for your secret code.");
+        if (!nameInput) return alert("Please enter your hacker alias first.");
         
         myData.name = nameInput;
-        myData.code = codeInput;
         isHost = true;
         initPeer();
         
         peer.on('open', (id) => {
             myId = id;
             document.getElementById('display-id').innerText = id;
-            document.getElementById('qr-container').innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${id}&color=00f3ff&bgcolor=050c16" alt="QR Sala">`;
+            document.getElementById('qr-container').innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}&color=00ff41&bgcolor=000" alt="QR Room Code">`;
             showLobby();
-            addOrUpdatePlayer({ id: myId, name: myData.name, ready: false, eliminated: false, x: 0, z: 12, rot: 0, anim: 'idle' });
+            addOrUpdatePlayer({ id: myId, name: myData.name, ready: false, eliminated: false });
         });
 
         peer.on('connection', (c) => {
             if (players.length >= 10) {
-                c.send({ type: 'ERROR', msg: 'Room is full (Max 10 hackers).' });
+                c.send({ type: 'ERROR', msg: 'Room is full (Maximum 10 players).' });
                 setTimeout(() => c.close(), 500);
                 return;
             }
+            
             c.on('data', (data) => handleData(data, c));
             c.on('open', () => {
                 connections.push(c);
@@ -580,7 +384,6 @@
             c.on('close', () => {
                 players = players.filter(p => p.id !== c.peer);
                 connections = connections.filter(conn => conn.peer !== c.peer);
-                removeRemotePlayerMesh(c.peer);
                 broadcast({ type: 'PLAYER_LIST', list: players });
                 updatePlayerListUI();
                 checkAllReady();
@@ -590,15 +393,12 @@
 
     function joinGame() {
         const nameInput = document.getElementById('username').value.trim();
-        const codeInput = document.getElementById('my-secret-code').value;
         const hostId = document.getElementById('join-id').value.trim();
         
-        if (!nameInput) return alert("Enter your Hacker name.");
-        if (codeInput.length !== 6) return alert("Enter exactly 6 digits for your secret code.");
-        if (!hostId) return alert("Enter the Room ID.");
+        if (!nameInput) return alert("Please enter your hacker alias first.");
+        if (!hostId) return alert("Please enter the Room ID.");
         
         myData.name = nameInput;
-        myData.code = codeInput;
         initPeer();
         
         peer.on('open', (id) => {
@@ -613,21 +413,21 @@
             
             conn.on('data', (data) => handleData(data, conn));
             conn.on('close', () => alert("Connection to Host lost."));
-            conn.on('error', () => alert("Error trying to join the room."));
+            conn.on('error', () => alert("Error connecting to room."));
         });
     }
 
     function initPeer() {
         peer = new Peer();
-        peer.on('error', (err) => alert("P2P server error: " + err.type));
+        peer.on('error', (err) => alert("Connection error: " + err.type));
     }
 
     function showLobby() {
-        document.getElementById('menu-modal').classList.add('hidden');
-        document.getElementById('lobby-modal').classList.remove('hidden');
-        document.getElementById('hud-my-name').innerText = myData.name;
-        document.getElementById('hud-my-code').innerText = myData.code;
+        document.getElementById('menu').classList.add('hidden');
+        document.getElementById('lobby').classList.remove('hidden');
     }
+
+    // --- DATA HANDLING ---
 
     function handleData(data, connection) {
         switch(data.type) {
@@ -636,8 +436,7 @@
                 location.reload();
                 break;
             case 'JOIN': 
-                let spawnPos = getInitialSpawnPos(players.length);
-                addOrUpdatePlayer({ id: data.id, name: data.name, ready: false, eliminated: false, x: spawnPos.x, z: spawnPos.z, rot: 0, anim: 'idle' });
+                addOrUpdatePlayer({ id: data.id, name: data.name, ready: false, eliminated: false });
                 broadcast({ type: 'PLAYER_LIST', list: players });
                 break;
             case 'PLAYER_LIST': 
@@ -657,33 +456,41 @@
                 players = data.list;
                 runGameStart();
                 break;
-            case 'POS':
-                // Sincronización de posición 3D
-                if (data.id !== myId) {
-                    let remoteP = players.find(pl => pl.id === data.id);
-                    if (remoteP) {
-                        remoteP.x = data.x;
-                        remoteP.z = data.z;
-                        remoteP.rot = data.rot;
-                        remoteP.anim = data.anim;
-                    }
-                }
-                if (isHost) {
-                    // Reenviar a los demás clientes
-                    connections.forEach(c => {
-                        if (c.peer !== data.id) c.send(data);
-                    });
-                }
-                break;
             case 'GUESS':
+                // Received attack: evaluate against current myData.code
                 if (data.to === myId) {
-                    let resultArr = [];
+                    let secret = myData.code.split('');
+                    let guess = data.val.split('');
+                    let resultArr = new Array(6).fill('❌');
+                    let secretUsed = new Array(6).fill(false);
+                    let guessUsed = new Array(6).fill(false);
                     let isCorrect = true;
+
+                    // Pass 1: Exact positional matches (✅)
                     for (let i = 0; i < 6; i++) {
-                        if (data.val[i] === myData.code[i]) { resultArr.push('✅'); } 
-                        else { resultArr.push('❌'); isCorrect = false; }
+                        if (guess[i] === secret[i]) {
+                            resultArr[i] = '✅';
+                            secretUsed[i] = true;
+                            guessUsed[i] = true;
+                        } else {
+                            isCorrect = false;
+                        }
                     }
 
+                    // Pass 2: Position mismatch (⚠️) - digit exists elsewhere in code
+                    for (let i = 0; i < 6; i++) {
+                        if (!guessUsed[i]) {
+                            for (let j = 0; j < 6; j++) {
+                                if (!secretUsed[j] && guess[i] === secret[j]) {
+                                    resultArr[i] = '⚠️';
+                                    secretUsed[j] = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+
+                    // Send result back to attacker
                     let feedbackData = { type: 'GUESS_RESULT', from: myId, to: data.from, guess: data.val, result: resultArr };
                     
                     if (isHost) {
@@ -695,10 +502,8 @@
 
                     if (isCorrect && !myData.eliminated) {
                         sfxEliminated();
-                        triggerGlitchEffect();
+                        alert("CRITICAL BREACH! Your secret code has been cracked. You are eliminated!");
                         myData.eliminated = true;
-                        showToast("⚠️ CODE DECRYPTED! You have been eliminated.");
-                        
                         if (isHost) {
                             markEliminated(myId);
                             broadcast({ type: 'ELIMINATED', playerId: myId });
@@ -708,13 +513,14 @@
                         }
                     }
                 } else if (isHost) { 
+                    // Host routes attack to targeted rival
                     let targetConn = connections.find(c => c.peer === data.to);
                     if (targetConn) targetConn.send(data);
                 }
                 break;
             case 'GUESS_RESULT':
                 if (data.to === myId) {
-                    receiveHackResult(data);
+                    handleFeedback(data);
                 } else if (isHost) {
                     let attackerConn = connections.find(c => c.peer === data.to);
                     if (attackerConn) attackerConn.send(data);
@@ -736,54 +542,28 @@
         }
     }
 
+    // --- LOBBY LOGIC ---
+
     function toggleReady() {
+        const codeInput = document.getElementById('my-secret-code').value;
+        if (codeInput.length !== 6) return alert("Your code must be exactly 6 digits.");
+        
+        myData.code = codeInput;
         myData.ready = true;
         
         document.getElementById('ready-btn').innerText = "WAITING FOR OTHERS...";
         document.getElementById('ready-btn').disabled = true;
+        document.getElementById('my-secret-code').disabled = true;
 
         if (isHost) {
             let self = players.find(p => p.id === myId);
-            if(self) self.ready = true;
+            self.ready = true;
             broadcast({ type: 'PLAYER_LIST', list: players });
             updatePlayerListUI();
             checkAllReady();
         } else {
             conn.send({ type: 'READY', id: myId, ready: true });
         }
-    }
-
-    // New "RECODE" Skill function
-    let recodeCooldown = false;
-    function useRecodeSkill() {
-        if (recodeCooldown || myData.eliminated) return;
-        const newCode = prompt("Enter your new 6-digit code:");
-        if (!newCode || newCode.length !== 6 || !/^\d+$/.test(newCode)) {
-            alert("Invalid code. It must be exactly 6 digits.");
-            return;
-        }
-        
-        myData.code = newCode;
-        document.getElementById('hud-my-code').innerText = myData.code;
-        showToast("Code successfully updated!");
-        
-        recodeCooldown = true;
-        const btn = document.getElementById('btn-recode');
-        btn.disabled = true;
-        let timeLeft = 20;
-        btn.innerText = `RECODE (${timeLeft}s)`;
-        
-        const timer = setInterval(() => {
-            timeLeft--;
-            if (timeLeft <= 0) {
-                clearInterval(timer);
-                recodeCooldown = false;
-                btn.disabled = false;
-                btn.innerText = "RECODE (READY)";
-            } else {
-                btn.innerText = `RECODE (${timeLeft}s)`;
-            }
-        }, 1000);
     }
 
     function checkAllReady() {
@@ -797,30 +577,242 @@
         }
     }
 
-    function getInitialSpawnPos(index) {
-        const radius = 12;
-        const angle = (index / 10) * Math.PI * 2;
-        return { x: Math.cos(angle) * radius, z: Math.sin(angle) * radius };
+    // --- GAMEPLAY ENGINE ---
+
+    function runGameStart() {
+        initAudio();
+        document.getElementById('lobby').classList.add('hidden');
+        document.getElementById('game-screen').classList.remove('hidden');
+        document.getElementById('chat-container').classList.remove('hidden');
+        
+        document.getElementById('show-my-code').innerText = myData.code;
+        myData.eliminated = false;
+        
+        setupScratchpad();
+        initRecodeSkill();
+        renderRivals();
     }
+
+    function renderRivals() {
+        const list = document.getElementById('rivals-list');
+        list.innerHTML = '';
+        players.forEach(p => {
+            if (p.id === myId) return;
+            const div = document.createElement('div');
+            div.id = `player-${p.id}`;
+            div.className = 'rival-card card';
+            div.innerHTML = `
+                <p style="margin-top:0;"><strong>&gt; ${p.name}</strong></p>
+                <input type="text" id="guess-${p.id}" maxlength="6" pattern="\\d{6}" placeholder="6-DIGIT CODE" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+                <button onclick="sendGuess('${p.id}')">HACK</button>
+                <div id="feedback-${p.id}" class="feedback-box">
+                    <span style="color: gray; font-size: 0.85em;">No attempts yet</span>
+                </div>`;
+            list.appendChild(div);
+        });
+    }
+
+    function sendGuess(targetId) {
+        sfxHack();
+        if (myData.eliminated) return alert("You are eliminated and cannot hack.");
+        
+        const guessInput = document.getElementById(`guess-${targetId}`);
+        const guess = guessInput.value;
+        
+        if (guess.length !== 6) return alert("You must enter a 6-digit code attempt.");
+
+        if (isHost) {
+            let targetConn = connections.find(c => c.peer === targetId);
+            if (targetConn) targetConn.send({ type: 'GUESS', from: myId, to: targetId, val: guess });
+        } else {
+            conn.send({ type: 'GUESS', from: myId, to: targetId, val: guess });
+        }
+        guessInput.value = '';
+    }
+
+    function handleFeedback(data) {
+        if (data.result.includes('✅') || data.result.includes('⚠️')) sfxHit();
+        else sfxMiss();
+
+        const feedbackDiv = document.getElementById(`feedback-${data.from}`);
+        if (feedbackDiv) {
+            // ONLY show the current/latest guess attempt
+            feedbackDiv.innerHTML = `<div class="feedback-row">${data.guess} ➔ ${data.result.join('')}</div>`;
+        }
+    }
+
+    function markEliminated(id) {
+        let p = players.find(player => player.id === id);
+        if (p) p.eliminated = true;
+
+        const el = document.getElementById(`player-${id}`);
+        if (el) {
+            el.classList.add('eliminated');
+            const btn = el.querySelector('button');
+            const inp = el.querySelector('input');
+            if (btn) btn.disabled = true;
+            if (inp) inp.disabled = true;
+        }
+        
+        if (id === myId) {
+            document.getElementById('show-my-code').innerText += " (ELIMINATED)";
+            document.getElementById('show-my-code').style.color = "#ff4444";
+        }
+    }
+
+    function checkWinCondition() {
+        if (!isHost) return;
+
+        const activePlayers = players.filter(p => !p.eliminated);
+        if (activePlayers.length === 1) {
+            const winner = activePlayers[0];
+            showVictory(winner.id, winner.name);
+            broadcast({ type: 'GAME_OVER', winnerId: winner.id, winnerName: winner.name });
+        } else if (activePlayers.length === 0) {
+            showVictory(null, "No one");
+            broadcast({ type: 'GAME_OVER', winnerId: null, winnerName: "No one" });
+        }
+    }
+
+    function showVictory(winnerId, winnerName) {
+        sfxWin();
+
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('victory-screen').classList.remove('hidden');
+        
+        const vicText = document.getElementById('victory-text');
+        
+        if (winnerId === myId) {
+            vicText.innerText = "YOU ARE THE TOP HACKER! VICTORY ACHIEVED!";
+            addTrophy();
+        } else {
+            vicText.innerText = `VICTORIOUS HACKER: ${winnerName}`;
+        }
+
+        if (isHost) {
+            document.getElementById('btn-play-again').classList.remove('hidden');
+        }
+    }
+
+    function addTrophy() {
+        trophies++;
+        localStorage.setItem('hackTheCode_trophies', trophies);
+        document.getElementById('trophy-count').innerText = trophies;
+    }
+
+    // --- RECODE SKILL ENGINE ---
+
+    function initRecodeSkill() {
+        recodeCooldown = 0;
+        updateRecodeButton();
+    }
+
+    function openRecodeModal() {
+        if (recodeCooldown > 0) return;
+        if (myData.eliminated) return alert("You are eliminated and cannot use skills.");
+        
+        document.getElementById('new-secret-code').value = '';
+        document.getElementById('recode-modal').classList.remove('hidden');
+        document.getElementById('modal-overlay').classList.remove('hidden');
+    }
+
+    function closeRecodeModal() {
+        document.getElementById('recode-modal').classList.add('hidden');
+        document.getElementById('modal-overlay').classList.add('hidden');
+    }
+
+    function confirmRecode() {
+        const newCode = document.getElementById('new-secret-code').value.trim();
+        if (newCode.length !== 6) return alert("New code must be exactly 6 digits.");
+
+        myData.code = newCode;
+        document.getElementById('show-my-code').innerText = myData.code;
+        sfxHack();
+        closeRecodeModal();
+
+        // Start 30s Cooldown
+        recodeCooldown = 30;
+        updateRecodeButton();
+
+        if (recodeInterval) clearInterval(recodeInterval);
+        recodeInterval = setInterval(() => {
+            recodeCooldown--;
+            updateRecodeButton();
+            if (recodeCooldown <= 0) {
+                clearInterval(recodeInterval);
+            }
+        }, 1000);
+    }
+
+    function updateRecodeButton() {
+        const btn = document.getElementById('recode-btn');
+        if (!btn) return;
+        if (recodeCooldown > 0) {
+            btn.innerText = `⚡ RECODE (${recodeCooldown}s)`;
+            btn.disabled = true;
+        } else {
+            btn.innerText = "⚡ RECODE (READY)";
+            btn.disabled = false;
+        }
+    }
+
+    // --- NOTEBOOK & SCRATCHPAD ---
+
+    function setupScratchpad() {
+        const pad = document.getElementById('scratchpad');
+        pad.innerHTML = '';
+        for (let i = 0; i <= 9; i++) {
+            const btn = document.createElement('button');
+            btn.className = 'digit-btn';
+            btn.innerText = i;
+            btn.onclick = () => btn.classList.toggle('struck');
+            pad.appendChild(btn);
+        }
+    }
+
+    // --- RESTART GAME ---
+
+    function playAgain() {
+        if (!isHost) return;
+        broadcast({ type: 'RESET' });
+        resetToLobby();
+    }
+
+    function resetToLobby() {
+        document.getElementById('victory-screen').classList.add('hidden');
+        document.getElementById('game-screen').classList.add('hidden');
+        document.getElementById('lobby').classList.remove('hidden');
+        
+        document.getElementById('my-secret-code').value = '';
+        document.getElementById('my-secret-code').disabled = false;
+        document.getElementById('ready-btn').innerText = "I'M READY";
+        document.getElementById('ready-btn').disabled = false;
+        document.getElementById('show-my-code').style.color = "white";
+        document.getElementById('chat-box').innerHTML = '';
+
+        if (recodeInterval) clearInterval(recodeInterval);
+
+        myData.ready = false;
+        myData.eliminated = false;
+        players.forEach(p => {
+            p.ready = false;
+            p.eliminated = false;
+        });
+
+        updatePlayerListUI();
+    }
+
+    // --- HELPER FUNCTIONS ---
 
     function broadcast(data) {
         connections.forEach(c => c.send(data));
     }
 
-    function sendMyPosition() {
-        const posData = { type: 'POS', id: myId, x: myData.x, z: myData.z, rot: myData.rot, anim: myData.anim };
-        if (isHost) {
-            connections.forEach(c => c.send(posData));
-        } else if (conn) {
-            conn.send(posData);
-        }
-    }
-
     function updatePlayerListUI() {
         const list = document.getElementById('player-list');
         list.innerHTML = players.map(p => {
-            let status = p.ready ? "<span style='color:var(--hacker-green);'>[READY]</span>" : "<span style='color:var(--cyber-yellow);'>[Waiting...]</span>";
-            return `<div>> ${p.name} ${status}</div>`;
+            let status = p.ready ? "<span class='ready-text'>[READY]</span>" : "[Waiting...]";
+            return `<div>&gt; ${p.name} ${status}</div>`;
         }).join('');
     }
 
@@ -835,825 +827,26 @@
         updatePlayerListUI();
     }
 
-    function markEliminated(id) {
-        let p = players.find(player => player.id === id);
-        if (p) p.eliminated = true;
-
-        if (remotePlayerMeshes[id]) {
-            triggerDataExplosion(remotePlayerMeshes[id].position);
-        }
-
-        if (id === myId) {
-            document.getElementById('hud-my-code').innerText += " (ELIMINATED)";
-            document.getElementById('hud-my-code').style.color = "var(--cyber-red)";
-        }
-    }
-
-    function checkWinCondition() {
-        if (!isHost) return;
-        const activePlayers = players.filter(p => !p.eliminated);
-        if (activePlayers.length === 1) {
-            const winner = activePlayers[0];
-            showVictory(winner.id, winner.name);
-            broadcast({ type: 'GAME_OVER', winnerId: winner.id, winnerName: winner.name });
-        } else if (activePlayers.length === 0) {
-            showVictory(null, "Nobody");
-            broadcast({ type: 'GAME_OVER', winnerId: null, winnerName: "Nobody" });
-        }
-    }
-
-    function showVictory(winnerId, winnerName) {
-        sfxWin();
-
-        document.getElementById('victory-modal').classList.remove('hidden');
-        const vicTitle = document.getElementById('victory-title');
-        const vicSub = document.getElementById('victory-subtitle');
-
-        if (winnerId === myId) {
-            vicTitle.innerText = "SUPREME HACKER!";
-            vicTitle.style.color = "var(--cyber-yellow)";
-            vicSub.innerText = "You decrypted the competition and took control.";
-            addTrophy();
-        } else {
-            vicTitle.innerText = "MATCH FINISHED";
-            vicTitle.style.color = "var(--cyber-cyan)";
-            vicSub.innerText = `The victorious hacker is: ${winnerName}`;
-        }
-
-        if (isHost) {
-            document.getElementById('btn-play-again').classList.remove('hidden');
-        }
-    }
-
-    function addTrophy() {
-        trophies++;
-        localStorage.setItem('hackTheCode_trophies', trophies);
-        document.getElementById('trophy-count').innerText = trophies;
-    }
-
-    function playAgain() {
-        if (!isHost) return;
-        broadcast({ type: 'RESET' });
-        resetToLobby();
-    }
-
-    function resetToLobby() {
-        document.getElementById('victory-modal').classList.add('hidden');
-        document.getElementById('lobby-modal').classList.remove('hidden');
-        
-        document.getElementById('ready-btn').innerText = "I'M READY";
-        document.getElementById('ready-btn').disabled = false;
-        document.getElementById('hud-my-code').innerText = myData.code;
-        document.getElementById('hud-my-code').style.color = "var(--cyber-cyan)";
-        document.getElementById('chat-box').innerHTML = '';
-
-        myData.ready = false;
-        myData.eliminated = false;
-        players.forEach(p => {
-            p.ready = false;
-            p.eliminated = false;
-        });
-
-        updatePlayerListUI();
-    }
-
-    // Chat
     function sendChatMessage() {
-        const input = document.getElementById('chat-input');
-        const msg = input.value.trim();
+        const msg = document.getElementById('chat-input').value.trim();
         if (!msg) return;
-
+        
         const data = { type: 'CHAT', name: myData.name, msg: msg };
         displayChat("You", msg);
-
+        
         if (isHost) broadcast(data);
-        else if (conn) conn.send(data);
-
-        input.value = '';
+        else conn.send(data);
+        
+        document.getElementById('chat-input').value = '';
     }
 
     function displayChat(name, msg) {
         const box = document.getElementById('chat-box');
-        const div = document.createElement('div');
-        div.innerHTML = `<strong style="color:var(--cyber-cyan);">${name}:</strong> ${msg}`;
-        box.appendChild(div);
+        box.innerHTML += `<div><strong>${name}:</strong> ${msg}</div>`;
         box.scrollTop = box.scrollHeight;
     }
-
-    // Glitch Overlay
-    function triggerGlitchEffect() {
-        const g = document.getElementById('glitch-overlay');
-        g.style.display = 'block';
-        setTimeout(() => { g.style.display = 'none'; }, 600);
-    }
-
-    // Tutorial
-    const tutSteps = [
-        "Welcome to Hack the Code 3D. Explore the cyber base with WASD or touch screen.",
-        "Your objective is to discover and hack the 6-digit codes of your rivals before they discover yours.",
-        "Set your secret code in the Menu. Keep it hidden from others!",
-        "Once inside the complex, locate the physical position of a rival hacker.",
-        "Get within 3 meters of your target to enable the Hack Console with the [E] key.",
-        "Enter your combination into the holographic terminal to start the brute force attack.",
-        "You will receive instant feedback: ✅ indicates correct digit and position. ❌ indicates incorrect.",
-        "The last surviving hacker on the server will win the match and earn trophies!"
-    ];
-    let currentTutStep = 0;
-    function openTutorial() {
-        currentTutStep = 0;
-        document.getElementById('tutorial-modal').classList.remove('hidden');
-        updateTutorial();
-    }
-    function nextTutorial() {
-        currentTutStep++;
-        if(currentTutStep >= tutSteps.length) closeTutorial();
-        else updateTutorial();
-    }
-    function updateTutorial() {
-        document.getElementById('tut-step').innerText = currentTutStep + 1;
-        document.getElementById('tut-text').innerText = tutSteps[currentTutStep];
-    }
-    function closeTutorial() {
-        document.getElementById('tutorial-modal').classList.add('hidden');
-    }
-
-    /* =========================================================================
-       3. MOTOR GRÁFICO THREE.JS (MUNDO 3D CYBERPUNK, ILUMINACIÓN Y JUGADOR)
-       ========================================================================= */
-    let scene, camera, renderer;
-    let localPlayerGroup, localCharacterMesh;
-    let clock = new THREE.Clock();
-    let minimapCanvas, minimapCtx;
-    let activeTargetPlayer = null;
-    let terminalTargetId = null;
-
-    // Animación y Controles
-    let keys = { w: false, a: false, s: false, d: false, Shift: false, e: false };
-    let joystickData = { active: false, dx: 0, dy: 0 };
-    let cameraAngle = { yaw: 0, pitch: 0.35, distance: 10 };
-    let isMouseDown = false, previousMousePosition = { x: 0, y: 0 };
-
-    // Texturas Dinámicas (Matrix Rain Canvas Texture)
-    let matrixCanvas, matrixCtx, matrixTexture;
-
-    function init3D() {
-        const container = document.getElementById('canvas-container');
-
-        // Escena y Niebla Cyberpunk
-        scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x030712);
-        scene.fog = new THREE.FogExp2(0x030712, 0.025);
-
-        // Cámara
-        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 200);
-
-        // Renderizador
-        renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        container.appendChild(renderer.domElement);
-
-        // Generar Textura Animada Matrix Rain
-        createMatrixTexture();
-
-        // Luces del entorno
-        const ambientLight = new THREE.AmbientLight(0x0a192f, 1.2);
-        scene.add(ambientLight);
-
-        const dirLight = new THREE.DirectionalLight(0x00f3ff, 0.8);
-        dirLight.position.set(20, 40, 20);
-        dirLight.castShadow = true;
-        dirLight.shadow.mapSize.width = 1024;
-        dirLight.shadow.mapSize.height = 1024;
-        scene.add(dirLight);
-
-        // Construir Base Cibernética
-        buildCyberLabMap();
-
-        // Crear Jugador Local
-        localPlayerGroup = createHackerCharacter(0x00ff41);
-        scene.add(localPlayerGroup);
-
-        // Eventos de Entradas / Redimensionado
-        setupInputs();
-        setupMinimap();
-
-        window.addEventListener('resize', onWindowResize);
-
-        // Bucle de Renderizado
-        animate();
-    }
-
-    /* Textura Matrix Rain Dinámica */
-    function createMatrixTexture() {
-        matrixCanvas = document.createElement('canvas');
-        matrixCanvas.width = 256;
-        matrixCanvas.height = 256;
-        matrixCtx = matrixCanvas.getContext('2d');
-        matrixTexture = new THREE.CanvasTexture(matrixCanvas);
-    }
-
-    function updateMatrixTexture(time) {
-        if (!matrixCtx) return;
-        matrixCtx.fillStyle = 'rgba(0, 5, 10, 0.2)';
-        matrixCtx.fillRect(0, 0, 256, 256);
-        matrixCtx.fillStyle = '#00ff41';
-        matrixCtx.font = '14px monospace';
-
-        for (let i = 0; i < 15; i++) {
-            const char = String.fromCharCode(0x30A0 + Math.floor(Math.random() * 96));
-            const x = (i * 18) % 256;
-            const y = (Math.floor(time * 150) + i * 35) % 256;
-            matrixCtx.fillText(char, x, y);
-        }
-        matrixTexture.needsUpdate = true;
-    }
-
-    /* Construcción del Mapa Cyberpunk con 6 Salas */
-    function buildCyberLabMap() {
-        // Suelo Metálico
-        const floorGeo = new THREE.PlaneGeometry(100, 100);
-        const floorMat = new THREE.MeshStandardMaterial({
-            color: 0x080f1d,
-            roughness: 0.3,
-            metalness: 0.8
-        });
-        const floor = new THREE.Mesh(floorGeo, floorMat);
-        floor.rotation.x = -Math.PI / 2;
-        floor.receiveShadow = true;
-        scene.add(floor);
-
-        // Rejilla de Neón en Suelo
-        const grid = new THREE.GridHelper(100, 50, 0x00f3ff, 0x003344);
-        grid.position.y = 0.02;
-        scene.add(grid);
-
-        // Paredes Perimetrales
-        createWall(0, 5, -50, 100, 10, 2, 0x00ff41);
-        createWall(0, 5, 50, 100, 10, 2, 0x00ff41);
-        createWall(-50, 5, 0, 2, 10, 100, 0x00f3ff);
-        createWall(50, 5, 0, 2, 10, 100, 0x00f3ff);
-
-        // Salas Temáticas (Divisiones internas)
-        const rooms = [
-            { name: 'QUANTUM CORE', x: -25, z: -25, color: 0x00f3ff },
-            { name: 'SERVER ROOM', x: 25, z: -25, color: 0x00ff41 },
-            { name: 'AI LAB', x: -25, z: 25, color: 0xff0055 },
-            { name: 'SECURITY HUB', x: 25, z: 25, color: 0xffcc00 },
-            { name: 'COMM STATION', x: 0, z: -35, color: 0x00f3ff },
-            { name: 'DATA VAULT', x: 0, z: 35, color: 0x00ff41 }
-        ];
-
-        rooms.forEach(r => {
-            // Anillo Holográfico de Zona
-            const ringGeo = new THREE.RingGeometry(8, 8.5, 32);
-            const ringMat = new THREE.MeshBasicMaterial({ color: r.color, side: THREE.DoubleSide });
-            const ring = new THREE.Mesh(ringGeo, ringMat);
-            ring.rotation.x = -Math.PI / 2;
-            ring.position.set(r.x, 0.05, r.z);
-            scene.add(ring);
-
-            // Luz de Zona
-            const light = new THREE.PointLight(r.color, 2, 20);
-            light.position.set(r.x, 6, r.z);
-            scene.add(light);
-
-            // Estructura Servidores Decorativos
-            createInstancedServers(r.x, r.z, r.color);
-        });
-
-        // Pantalla Principal con Matrix Rain
-        const screenGeo = new THREE.PlaneGeometry(16, 9);
-        const screenMat = new THREE.MeshBasicMaterial({ map: matrixTexture, side: THREE.DoubleSide });
-        const screenMesh = new THREE.Mesh(screenGeo, screenMat);
-        screenMesh.position.set(0, 8, -48.8);
-        scene.add(screenMesh);
-
-        // Drones Voladores Decorativos
-        createSecurityDrones();
-    }
-
-    function createWall(x, y, z, w, h, d, glowColor) {
-        const wallGeo = new THREE.BoxGeometry(w, h, d);
-        const wallMat = new THREE.MeshStandardMaterial({ color: 0x070d18, roughness: 0.5, metalness: 0.9 });
-        const wall = new THREE.Mesh(wallGeo, wallMat);
-        wall.position.set(x, y, z);
-        wall.receiveShadow = true;
-        wall.castShadow = true;
-        scene.add(wall);
-
-        // Trim neón
-        const trimGeo = new THREE.BoxGeometry(w + 0.1, 0.3, d + 0.1);
-        const trimMat = new THREE.MeshBasicMaterial({ color: glowColor });
-        const trim = new THREE.Mesh(trimGeo, trimMat);
-        trim.position.set(x, y + h / 2, z);
-        scene.add(trim);
-    }
-
-    function createInstancedServers(cx, cz, glowColor) {
-        const serverGeo = new THREE.BoxGeometry(1.5, 5, 1.5);
-        const serverMat = new THREE.MeshStandardMaterial({ color: 0x0a101d, roughness: 0.2, metalness: 0.9 });
-
-        for(let i = -1; i <= 1; i += 2) {
-            for(let j = -1; j <= 1; j += 2) {
-                const server = new THREE.Mesh(serverGeo, serverMat);
-                server.position.set(cx + i * 4, 2.5, cz + j * 4);
-                server.castShadow = true;
-                scene.add(server);
-
-                // Luz LED parpadeante
-                const ledGeo = new THREE.BoxGeometry(1.6, 0.1, 1.6);
-                const ledMat = new THREE.MeshBasicMaterial({ color: glowColor });
-                const led = new THREE.Mesh(ledGeo, ledMat);
-                led.position.set(cx + i * 4, 4.8, cz + j * 4);
-                scene.add(led);
-            }
-        }
-    }
-
-    let drones = [];
-    function createSecurityDrones() {
-        for(let i = 0; i < 3; i++) {
-            const droneGroup = new THREE.Group();
-            const bodyGeo = new THREE.SphereGeometry(0.8, 16, 16);
-            const bodyMat = new THREE.MeshStandardMaterial({ color: 0x111111, metalness: 1 });
-            const body = new THREE.Mesh(bodyGeo, bodyMat);
-            droneGroup.add(body);
-
-            const eyeGeo = new THREE.SphereGeometry(0.3, 16, 16);
-            const eyeMat = new THREE.MeshBasicMaterial({ color: 0xff0055 });
-            const eye = new THREE.Mesh(eyeGeo, eyeMat);
-            eye.position.set(0, 0, 0.7);
-            droneGroup.add(eye);
-
-            droneGroup.position.set((i - 1) * 20, 7, 0);
-            scene.add(droneGroup);
-            drones.push({ mesh: droneGroup, baseAngle: i * 2 });
-        }
-    }
-
-    /* MESH DE JUGADOR CIBERNÉTICO */
-    function createHackerCharacter(visorColor = 0x00ff41) {
-        const group = new THREE.Group();
-
-        // Cuerpo / Torso
-        const bodyGeo = new THREE.CylinderGeometry(0.5, 0.3, 1.6, 8);
-        const bodyMat = new THREE.MeshStandardMaterial({ color: 0x0d1527, roughness: 0.3, metalness: 0.8 });
-        const body = new THREE.Mesh(bodyGeo, bodyMat);
-        body.position.y = 1.3;
-        body.castShadow = true;
-        group.add(body);
-
-        // Cabeza
-        const headGeo = new THREE.SphereGeometry(0.35, 16, 16);
-        const headMat = new THREE.MeshStandardMaterial({ color: 0x050a14, metalness: 0.9 });
-        const head = new THREE.Mesh(headGeo, headMat);
-        head.position.y = 2.3;
-        group.add(head);
-
-        // Visor Neón (Ojos)
-        const visorGeo = new THREE.BoxGeometry(0.45, 0.12, 0.25);
-        const visorMat = new THREE.MeshBasicMaterial({ color: visorColor });
-        const visor = new THREE.Mesh(visorGeo, visorMat);
-        visor.position.set(0, 2.32, 0.22);
-        group.add(visor);
-
-        // Extremidades (Piernas / Brazos para animación simple)
-        const limbGeo = new THREE.CylinderGeometry(0.12, 0.1, 1.1);
-        const limbMat = new THREE.MeshStandardMaterial({ color: 0x09101e });
-
-        const leftLeg = new THREE.Mesh(limbGeo, limbMat);
-        leftLeg.position.set(-0.25, 0.55, 0);
-        leftLeg.name = "leftLeg";
-        group.add(leftLeg);
-
-        const rightLeg = new THREE.Mesh(limbGeo, limbMat);
-        rightLeg.position.set(0.25, 0.55, 0);
-        rightLeg.name = "rightLeg";
-        group.add(rightLeg);
-
-        return group;
-    }
-
-    /* =========================================================================
-       4. LOGICA DE CONTROL, MOVIMIENTO Y CAMARA 3D
-       ========================================================================= */
-    function setupInputs() {
-        // Teclado
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = true;
-            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = true;
-            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = true;
-            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = true;
-            if (e.key === 'Shift') keys.Shift = true;
-            if (e.key === 'e' || e.key === 'E') {
-                if (activeTargetPlayer) triggerHackInteraction();
-            }
-        });
-
-        window.addEventListener('keyup', (e) => {
-            if (e.key === 'w' || e.key === 'W' || e.key === 'ArrowUp') keys.w = false;
-            if (e.key === 's' || e.key === 'S' || e.key === 'ArrowDown') keys.s = false;
-            if (e.key === 'a' || e.key === 'A' || e.key === 'ArrowLeft') keys.a = false;
-            if (e.key === 'd' || e.key === 'D' || e.key === 'ArrowRight') keys.d = false;
-            if (e.key === 'Shift') keys.Shift = false;
-        });
-
-        // Ratón para orbitar cámara
-        window.addEventListener('mousedown', (e) => {
-            if (e.target.tagName === 'CANVAS' && e.target.id !== 'minimap-canvas') {
-                isMouseDown = true;
-                previousMousePosition = { x: e.clientX, y: e.clientY };
-            }
-        });
-
-        window.addEventListener('mouseup', () => { isMouseDown = false; });
-
-        window.addEventListener('mousemove', (e) => {
-            if (!isMouseDown) return;
-            const deltaX = e.clientX - previousMousePosition.x;
-            const deltaY = e.clientY - previousMousePosition.y;
-
-            cameraAngle.yaw -= deltaX * 0.005;
-            cameraAngle.pitch = Math.max(0.1, Math.min(1.2, cameraAngle.pitch + deltaY * 0.005));
-
-            previousMousePosition = { x: e.clientX, y: e.clientY };
-        });
-
-        // Zoom Rueda
-        window.addEventListener('wheel', (e) => {
-            cameraAngle.distance = Math.max(4, Math.min(22, cameraAngle.distance + e.deltaY * 0.01));
-        });
-
-        // Joystick Táctil Dispositivos Móviles
-        setupTouchControls();
-    }
-
-    function setupTouchControls() {
-        const touchContainer = document.getElementById('touch-controls');
-        const stick = document.getElementById('joystick-stick');
-        if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
-            touchContainer.style.display = 'block';
-        }
-
-        let touchId = null;
-        let startX, startY;
-
-        touchContainer.addEventListener('touchstart', (e) => {
-            const touch = e.changedTouches[0];
-            touchId = touch.identifier;
-            startX = touch.clientX;
-            startY = touch.clientY;
-            joystickData.active = true;
-        });
-
-        window.addEventListener('touchmove', (e) => {
-            if (!joystickData.active) return;
-            for(let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === touchId) {
-                    const touch = e.changedTouches[i];
-                    const dx = touch.clientX - startX;
-                    const dy = touch.clientY - startY;
-                    const dist = Math.min(40, Math.hypot(dx, dy));
-                    const angle = Math.atan2(dy, dx);
-
-                    stick.style.transform = `translate(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist}px)`;
-                    joystickData.dx = (Math.cos(angle) * dist) / 40;
-                    joystickData.dy = (Math.sin(angle) * dist) / 40;
-                }
-            }
-        });
-
-        const endTouch = (e) => {
-            for(let i = 0; i < e.changedTouches.length; i++) {
-                if (e.changedTouches[i].identifier === touchId) {
-                    joystickData.active = false;
-                    joystickData.dx = 0;
-                    joystickData.dy = 0;
-                    stick.style.transform = 'translate(0px, 0px)';
-                }
-            }
-        };
-
-        window.addEventListener('touchend', endTouch);
-        window.addEventListener('touchcancel', endTouch);
-    }
-
-    function updateLocalPlayerMovement(delta) {
-        if (myData.eliminated) return;
-
-        let moveX = 0, moveZ = 0;
-
-        if (keys.w) moveZ -= 1;
-        if (keys.s) moveZ += 1;
-        if (keys.a) moveX -= 1;
-        if (keys.d) moveX += 1;
-
-        if (joystickData.active) {
-            moveX = joystickData.dx;
-            moveZ = joystickData.dy;
-        }
-
-        const isMoving = (moveX !== 0 || moveZ !== 0);
-        const speed = (keys.Shift ? 12 : 7) * delta;
-
-        if (isMoving) {
-            // Calcular dirección respecto a la rotación de la cámara
-            const inputAngle = Math.atan2(moveX, moveZ);
-            const moveAngle = cameraAngle.yaw + inputAngle;
-
-            const nextX = localPlayerGroup.position.x + Math.sin(moveAngle) * speed;
-            const nextZ = localPlayerGroup.position.z + Math.cos(moveAngle) * speed;
-
-            // Límites del laboratorio (-48 a 48)
-            localPlayerGroup.position.x = Math.max(-48, Math.min(48, nextX));
-            localPlayerGroup.position.z = Math.max(-48, Math.min(48, nextZ));
-
-            // Rotación suave del personaje
-            localPlayerGroup.rotation.y = moveAngle;
-
-            myData.x = localPlayerGroup.position.x;
-            myData.z = localPlayerGroup.position.z;
-            myData.rot = localPlayerGroup.rotation.y;
-            myData.anim = keys.Shift ? 'run' : 'walk';
-
-            // Animación física de piernas
-            animateLegs(localPlayerGroup, clock.getElapsedTime() * (keys.Shift ? 14 : 8));
-
-            // Sonido de pasos
-            if (Math.sin(clock.getElapsedTime() * 10) > 0.9) sfxStep();
-
-            sendMyPosition();
-        } else {
-            myData.anim = 'idle';
-            resetLegs(localPlayerGroup);
-        }
-    }
-
-    function animateLegs(group, time) {
-        const leftLeg = group.getObjectByName("leftLeg");
-        const rightLeg = group.getObjectByName("rightLeg");
-        if (leftLeg && rightLeg) {
-            leftLeg.rotation.x = Math.sin(time) * 0.6;
-            rightLeg.rotation.x = -Math.sin(time) * 0.6;
-        }
-    }
-
-    function resetLegs(group) {
-        const leftLeg = group.getObjectByName("leftLeg");
-        const rightLeg = group.getObjectByName("rightLeg");
-        if (leftLeg && rightLeg) {
-            leftLeg.rotation.x = 0;
-            rightLeg.rotation.x = 0;
-        }
-    }
-
-    function updateCameraPosition() {
-        const cx = localPlayerGroup.position.x + Math.sin(cameraAngle.yaw) * cameraAngle.distance * Math.cos(cameraAngle.pitch);
-        const cy = localPlayerGroup.position.y + 1.8 + Math.sin(cameraAngle.pitch) * cameraAngle.distance;
-        const cz = localPlayerGroup.position.z + Math.cos(cameraAngle.yaw) * cameraAngle.distance * Math.cos(cameraAngle.pitch);
-
-        camera.position.set(cx, cy, cz);
-        camera.lookAt(localPlayerGroup.position.x, localPlayerGroup.position.y + 1.8, localPlayerGroup.position.z);
-    }
-
-    /* Sincronización de Jugadores Remotos */
-    function syncRemotePlayerMeshes() {
-        players.forEach(p => {
-            if (p.id === myId) return;
-
-            if (!remotePlayerMeshes[p.id]) {
-                const mesh = createHackerCharacter(0x00f3ff);
-                scene.add(mesh);
-                remotePlayerMeshes[p.id] = mesh;
-            }
-
-            const mesh = remotePlayerMeshes[p.id];
-            
-            // Interpolación Suave de Posición y Rotación
-            mesh.position.x += (p.x - mesh.position.x) * 0.2;
-            mesh.position.z += (p.z - mesh.position.z) * 0.2;
-            mesh.rotation.y += (p.rot - mesh.rotation.y) * 0.2;
-
-            if (p.anim === 'walk' || p.anim === 'run') {
-                animateLegs(mesh, clock.getElapsedTime() * 10);
-            } else {
-                resetLegs(mesh);
-            }
-
-            if (p.eliminated) {
-                mesh.visible = false;
-            }
-        });
-    }
-
-    function removeRemotePlayerMesh(id) {
-        if (remotePlayerMeshes[id]) {
-            scene.remove(remotePlayerMeshes[id]);
-            delete remotePlayerMeshes[id];
-        }
-    }
-
-    /* =========================================================================
-       5. DETECCIÓN DE PROXIMIDAD Y TERMINAL HOLOGRÁFICA
-       ========================================================================= */
-    function checkProximityAndTargeting() {
-        if (myData.eliminated) {
-            document.getElementById('interaction-prompt').style.display = 'none';
-            return;
-        }
-
-        let closestPlayer = null;
-        let minDistance = 3.5; // Distancia máxima para hackear (3.5m)
-
-        players.forEach(p => {
-            if (p.id === myId || p.eliminated) return;
-
-            const dx = p.x - localPlayerGroup.position.x;
-            const dz = p.z - localPlayerGroup.position.z;
-            const dist = Math.hypot(dx, dz);
-
-            if (dist < minDistance) {
-                minDistance = dist;
-                closestPlayer = p;
-            }
-        });
-
-        activeTargetPlayer = closestPlayer;
-
-        const prompt = document.getElementById('interaction-prompt');
-        if (activeTargetPlayer) {
-            document.getElementById('target-player-name').innerText = activeTargetPlayer.name;
-            prompt.style.display = 'block';
-        } else {
-            prompt.style.display = 'none';
-        }
-    }
-
-    function triggerHackInteraction() {
-        if (!activeTargetPlayer) return;
-        terminalTargetId = activeTargetPlayer.id;
-        document.getElementById('terminal-target-name').innerText = activeTargetPlayer.name;
-        document.getElementById('terminal-guess-input').value = '';
-        document.getElementById('terminal-feedback-list').innerHTML = '';
-        document.getElementById('hack-terminal-modal').style.display = 'flex';
-        sfxHack();
-    }
-
-    function closeTerminalHack() {
-        document.getElementById('hack-terminal-modal').style.display = 'none';
-        terminalTargetId = null;
-    }
-
-    function submitTerminalHack() {
-        const input = document.getElementById('terminal-guess-input').value;
-        if (input.length !== 6) return alert("The code must be 6 numbers.");
-        if (!terminalTargetId) return;
-
-        sfxHack();
-
-        const guessData = { type: 'GUESS', from: myId, to: terminalTargetId, val: input };
-
-        if (isHost) {
-            let targetConn = connections.find(c => c.peer === terminalTargetId);
-            if (targetConn) targetConn.send(guessData);
-        } else if (conn) {
-            conn.send(guessData);
-        }
-
-        document.getElementById('terminal-guess-input').value = '';
-    }
-
-    function receiveHackResult(data) {
-        if (data.result.includes('✅')) sfxHit();
-        else sfxMiss();
-
-        const list = document.getElementById('terminal-feedback-list');
-        // OVERWRITING content to only display the current code guess as requested
-        list.innerHTML = `<div class="feedback-row"><span>KEY: <strong>${data.guess}</strong></span> <span>${data.result.join('')}</span></div>`;
-    }
-
-    /* Explosión de Datos / Chispas al eliminar */
-    function triggerDataExplosion(pos) {
-        const particleCount = 40;
-        const geo = new THREE.BufferGeometry();
-        const positions = [];
-
-        for(let i = 0; i < particleCount; i++) {
-            positions.push(pos.x, pos.y + 1, pos.z);
-        }
-
-        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-        const mat = new THREE.PointsMaterial({ color: 0xff0055, size: 0.3 });
-        const pSystem = new THREE.Points(geo, mat);
-        scene.add(pSystem);
-
-        let t = 0;
-        const animBurst = () => {
-            t += 0.05;
-            const positionsArr = pSystem.geometry.attributes.position.array;
-            for(let i = 0; i < particleCount; i++) {
-                positionsArr[i*3] += (Math.random() - 0.5) * 0.4;
-                positionsArr[i*3+1] += (Math.random() - 0.2) * 0.4;
-                positionsArr[i*3+2] += (Math.random() - 0.5) * 0.4;
-            }
-            pSystem.geometry.attributes.position.needsUpdate = true;
-
-            if (t < 1) requestAnimationFrame(animBurst);
-            else scene.remove(pSystem);
-        };
-        animBurst();
-    }
-
-    /* =========================================================================
-       6. MINIMAPA EN TIEMPO REAL
-       ========================================================================= */
-    function setupMinimap() {
-        minimapCanvas = document.getElementById('minimap-canvas');
-        minimapCanvas.width = 160;
-        minimapCanvas.height = 160;
-        minimapCtx = minimapCanvas.getContext('2d');
-    }
-
-    function updateMinimap() {
-        if (!minimapCtx) return;
-        minimapCtx.clearRect(0, 0, 160, 160);
-
-        // Centro del minimapa (80,80) -> equivale a (0,0) en 3D
-        const scale = 1.4; // 100m map / 160px
-
-        // Dibujar borde mapa
-        minimapCtx.strokeStyle = 'rgba(0, 243, 255, 0.4)';
-        minimapCtx.strokeRect(10, 10, 140, 140);
-
-        // Dibujar Jugadores
-        players.forEach(p => {
-            if (p.eliminated) return;
-            const mx = 80 + (p.x * scale);
-            const my = 80 + (p.z * scale);
-
-            minimapCtx.beginPath();
-            minimapCtx.arc(mx, my, p.id === myId ? 4 : 3, 0, Math.PI * 2);
-            minimapCtx.fillStyle = p.id === myId ? '#00ff41' : '#00f3ff';
-            minimapCtx.fill();
-        });
-    }
-
-    /* =========================================================================
-       7. BUCLE PRINCIPAL DE ANIMACIÓN
-       ========================================================================= */
-    function animate() {
-        requestAnimationFrame(animate);
-
-        const delta = clock.getDelta();
-        const time = clock.getElapsedTime();
-
-        // Actualizar Textura Matrix Rain
-        updateMatrixTexture(time);
-
-        // Actualizar Movimiento Jugador Local & Cámara
-        updateLocalPlayerMovement(delta);
-        updateCameraPosition();
-
-        // Sincronizar Jugadores Remotos en la Escena
-        syncRemotePlayerMeshes();
-
-        // Verificar Proximidad para Hackeo
-        checkProximityAndTargeting();
-
-        // Animación Drones
-        drones.forEach(d => {
-            d.mesh.position.y = 6 + Math.sin(time * 2 + d.baseAngle) * 0.8;
-            d.mesh.rotation.y = time;
-        });
-
-        // Actualizar Minimapa
-        updateMinimap();
-
-        renderer.render(scene, camera);
-    }
-
-    function runGameStart() {
-        initAudio();
-        document.getElementById('lobby-modal').classList.add('hidden');
-        document.getElementById('chat-container').classList.remove('hidden');
-
-        showToast("⚔️ HACK BASE ACTIVE. LOCATE YOUR RIVALS!");
-    }
-
-    function onWindowResize() {
-        camera.aspect = window.innerWidth / window.innerHeight;
-        camera.updateProjectionMatrix();
-        renderer.setSize(window.innerWidth, window.innerHeight);
-    }
-
-    // Inicializar Motor 3D al cargar ventana
-    window.onload = function() {
-        init3D();
-    };
 </script>
 
 </body>
 </html>
+
