@@ -297,7 +297,7 @@
             <div class="ability-grid">
                 <label class="ability-card">
                     <input type="radio" name="hacker-ability" value="recode" checked onchange="selectAbility('recode')">
-                    <span>⚡ <strong>RECODE</strong><br><small style="color:#aaa;">Change secret code (30s CD)</small></span>
+                    <span>⚡ <strong>RECODE</strong><br><small style="color:#aaa;">Modify 1 digit (30s CD)</small></span>
                 </label>
                 <label class="ability-card">
                     <input type="radio" name="hacker-ability" value="firewall" onchange="selectAbility('firewall')">
@@ -376,8 +376,21 @@
 <!-- Recode Skill Modal -->
 <div id="recode-modal" class="card hidden">
     <h3 style="color: var(--hacker-amber);">⚡ RECODE SKILL</h3>
-    <p style="font-size: 0.85em;">Enter your new 6-digit secret code. This will update your encrypted code immediately!</p>
-    <input type="password" id="new-secret-code" maxlength="6" pattern="\d{6}" placeholder="New 6 digits" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+    <p style="font-size: 0.85em;">Select a position (1-6) and enter 1 new digit to modify your secret code!</p>
+    <label>Position: 
+        <select id="recode-pos-select">
+            <option value="0">Position 1</option>
+            <option value="1">Position 2</option>
+            <option value="2">Position 3</option>
+            <option value="3">Position 4</option>
+            <option value="4">Position 5</option>
+            <option value="5">Position 6</option>
+        </select>
+    </label>
+    <br><br>
+    <label>New Digit: 
+        <input type="text" id="new-single-digit" maxlength="1" pattern="\d{1}" placeholder="0-9" style="width: 50px; text-align: center;" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+    </label>
     <br><br>
     <button onclick="confirmRecode()" style="border-color: var(--hacker-amber); color: var(--hacker-amber);">CONFIRM RECODE</button>
     <button onclick="closeRecodeModal()" style="border-color: gray; color: gray;">Cancel</button>
@@ -500,7 +513,7 @@
         "When all hackers are marked READY, the game begins and rivals will appear on your grid.",
         "Enter a 6-digit guess into a rival's hack panel and press 'HACK'.",
         "Feedback Guide:\n✅ = Digit is correct and in the right position.\n⚠️ = Digit exists in rival's code, but in a DIFFERENT position.\n❌ = Digit is NOT in rival's code.\n👾 = Corrupted clue caused by a Virus attack.",
-        "4 CLASS ABILITIES (Select 1 in Lobby):\n⚡ RECODE: Change secret code (30s CD).\n🛡️ FIREWALL: Deploy shield to block 1 incoming attack (40s CD).\n🔍 SCANNER: Scan & reveal 1 exact digit of a rival (45s CD).\n👾 VIRUS: Infect a rival to corrupt 2 clues on their next guess (35s CD)."
+        "4 CLASS ABILITIES (Select 1 in Lobby):\n⚡ RECODE: Modify 1 digit of your secret code (30s CD).\n🛡️ FIREWALL: Deploy shield to block 1 incoming attack (40s CD).\n🔍 SCANNER: Scan & reveal 1 exact digit of a rival (45s CD).\n👾 VIRUS: Infect a rival to corrupt 2 clues on their next guess (35s CD)."
     ];
     let currentTutStep = 0;
     function openTutorial() {
@@ -1077,7 +1090,7 @@
         if (skillCooldown > 0) return;
         if (myData.eliminated) return alert("You are eliminated and cannot use skills.");
         
-        document.getElementById('new-secret-code').value = '';
+        document.getElementById('new-single-digit').value = '';
         document.getElementById('recode-modal').classList.remove('hidden');
         document.getElementById('modal-overlay').classList.remove('hidden');
     }
@@ -1088,10 +1101,14 @@
     }
 
     function confirmRecode() {
-        const newCode = document.getElementById('new-secret-code').value.trim();
-        if (newCode.length !== 6) return alert("New code must be exactly 6 digits.");
+        const pos = parseInt(document.getElementById('recode-pos-select').value);
+        const newDigit = document.getElementById('new-single-digit').value.trim();
+        if (newDigit.length !== 1) return alert("You must enter exactly 1 new digit.");
 
-        myData.code = newCode;
+        let codeArr = myData.code.split('');
+        codeArr[pos] = newDigit;
+        myData.code = codeArr.join('');
+
         document.getElementById('show-my-code').innerText = myData.code;
         sfxHack();
         closeRecodeModal();
