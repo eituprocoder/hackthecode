@@ -21,6 +21,9 @@
             --hacker-cyan: #00f3ff;
             --hacker-amber: #ffb700;
             --hacker-purple: #bd00ff;
+            --hacker-red: #ff3344;
+            --team-blue: #00a2ff;
+            --team-red: #ff3355;
             --dark-bg: #0d0d0d;
         }
         * { box-sizing: border-box; }
@@ -74,7 +77,7 @@
         /* Ability Selector Styles */
         .ability-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
             gap: 10px;
             margin-top: 10px;
             text-align: left;
@@ -97,6 +100,27 @@
         .ability-card input[type="radio"] {
             margin-top: 3px;
         }
+
+        /* Team Selector Grid */
+        .team-selector {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin: 15px 0;
+        }
+        .team-option {
+            padding: 10px 18px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+            background: #000;
+            transition: all 0.2s;
+            font-weight: bold;
+        }
+        .team-option.blue-team { border-color: var(--team-blue); color: var(--team-blue); }
+        .team-option.red-team { border-color: var(--team-red); color: var(--team-red); }
+        .team-option input { margin-right: 6px; }
+        .team-option:hover { filter: brightness(1.3); }
 
         /* Profile Badge */
         #profile-badge {
@@ -125,8 +149,22 @@
             box-shadow: 0 0 8px rgba(255, 68, 68, 0.4);
             background: rgba(0, 0, 0, 0.9);
         }
-        .eliminated { opacity: 0.3; text-decoration: line-through; border-color: gray; pointer-events: none; }
+        .rival-card.team-blue-card {
+            border-color: var(--team-blue);
+            box-shadow: 0 0 8px rgba(0, 162, 255, 0.4);
+        }
+        .rival-card.team-red-card {
+            border-color: var(--team-red);
+            box-shadow: 0 0 8px rgba(255, 51, 85, 0.4);
+        }
+        .teammate-card {
+            opacity: 0.8;
+        }
+        .eliminated { opacity: 0.3; text-decoration: line-through; border-color: gray !important; pointer-events: none; }
         .ready-text { color: var(--hacker-amber); font-size: 0.85em; }
+
+        .team-badge-blue { color: var(--team-blue); font-weight: bold; }
+        .team-badge-red { color: var(--team-red); font-weight: bold; }
 
         /* Single Feedback Display */
         .feedback-box {
@@ -188,6 +226,16 @@
             color: black !important;
             box-shadow: 0 0 10px var(--hacker-purple);
         }
+        .explode-btn {
+            border-color: #ff3300 !important;
+            color: #ff3300 !important;
+            font-weight: bold;
+        }
+        .explode-btn:hover:not(:disabled) {
+            background: #ff3300 !important;
+            color: black !important;
+            box-shadow: 0 0 10px #ff3300;
+        }
 
         /* Notebook Section */
         .notebook-card {
@@ -243,9 +291,20 @@
             font-size: 0.9em;
             background: rgba(0, 0, 0, 0.9);
         }
+        .chat-name-clickable {
+            cursor: pointer;
+            text-decoration: underline;
+        }
+        .chat-name-clickable:hover {
+            color: var(--hacker-cyan);
+        }
+        .whisper-msg {
+            color: #ff88ff;
+            font-style: italic;
+        }
 
         /* Modals & Overlays */
-        #tutorial-modal, #recode-modal, #scanner-modal, #virus-modal {
+        #tutorial-modal, #recode-modal, #scanner-modal, #virus-modal, #explode-modal {
             position: fixed;
             top: 50%;
             left: 50%;
@@ -257,9 +316,26 @@
             border-color: var(--hacker-cyan);
             box-shadow: 0 0 25px var(--hacker-cyan);
         }
+        #server-lock-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 2000;
+            max-width: 480px;
+            width: 92%;
+            background: #110000;
+            border: 2px solid #ff3300;
+            box-shadow: 0 0 35px #ff3300;
+            text-align: center;
+        }
         .modal-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.85); z-index: 999;
+        }
+        .lock-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(50,0,0,0.92); z-index: 1999;
         }
     </style>
 </head>
@@ -291,6 +367,21 @@
         
         <div id="qr-container" style="margin: 15px 0;"></div>
 
+        <!-- TvT Team Selector -->
+        <div style="margin: 15px 0; border: 1px solid var(--hacker-green); padding: 12px; background: rgba(0, 255, 65, 0.05);">
+            <h4 style="margin: 0 0 8px 0; color: var(--hacker-green);">&gt; CHOOSE YOUR TEAM (TvT MODE):</h4>
+            <div class="team-selector">
+                <label class="team-option blue-team">
+                    <input type="radio" name="hacker-team" value="blue" checked onchange="selectTeam('blue')">
+                    🔵 TEAM BLUE
+                </label>
+                <label class="team-option red-team">
+                    <input type="radio" name="hacker-team" value="red" onchange="selectTeam('red')">
+                    🔴 TEAM RED
+                </label>
+            </div>
+        </div>
+
         <!-- Ability Selection System -->
         <div style="margin: 15px 0; border: 1px solid var(--hacker-cyan); padding: 12px; background: rgba(0, 243, 255, 0.05); text-align: left;">
             <h4 style="margin: 0 0 8px 0; color: var(--hacker-cyan);">&gt; CHOOSE YOUR CLASS ABILITY (SELECT 1):</h4>
@@ -311,6 +402,10 @@
                     <input type="radio" name="hacker-ability" value="virus" onchange="selectAbility('virus')">
                     <span>👾 <strong>VIRUS</strong><br><small style="color:#aaa;">Corrupt rival clues (35s CD)</small></span>
                 </label>
+                <label class="ability-card">
+                    <input type="radio" name="hacker-ability" value="explode" onchange="selectAbility('explode')">
+                    <span>🧨 <strong>SERVER EXPLODE</strong><br><small style="color:#aaa;">Lock rival terminal (50s CD)</small></span>
+                </label>
             </div>
         </div>
 
@@ -327,6 +422,7 @@
         <div class="card" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <div>
                 <h4 style="margin:0;">YOUR CODE: <span id="show-my-code" style="color: white; letter-spacing: 2px;">******</span></h4>
+                <div id="my-team-display" style="font-size: 0.85em; margin-top: 4px;"></div>
             </div>
             <div>
                 <button id="recode-btn" class="recode-btn" onclick="useActiveSkill()">⚡ RECODE (READY)</button>
@@ -357,17 +453,31 @@
     <!-- Chat Box -->
     <div id="chat-container" class="hidden" style="width: 100%;">
         <div id="chat-box"></div>
-        <input type="text" id="chat-input" placeholder="Send transmission..." style="width: 70%;">
+        <div style="font-size: 0.75em; color: #888; text-align: left; margin-top: 3px;">
+            💡 Tip: Type <code>@PlayerName message</code> or click any player's name above to send a private whisper.
+        </div>
+        <input type="text" id="chat-input" placeholder="Send transmission or @name message..." style="width: 70%;">
         <button onclick="sendChatMessage()">Send</button>
     </div>
 </div>
 
 <!-- Modal Overlays -->
 <div id="modal-overlay" class="modal-overlay hidden"></div>
+<div id="server-lock-overlay" class="lock-overlay hidden"></div>
+
+<!-- Server Explode Critical Lock Overlay Modal -->
+<div id="server-lock-modal" class="card hidden">
+    <h2 style="color: #ff3300; margin-top:0;">🧨 SERVER EXPLODED!</h2>
+    <p style="color: #ffaa00; font-weight: bold;">CRITICAL SYSTEM FAILURE — TERMINAL LOCKED!</p>
+    <p style="font-size: 0.85em; color: #ccc;">An enemy rival detonated your terminal server! Enter your exact secret 6-digit code to reboot system controls:</p>
+    <input type="password" id="unlock-code-input" maxlength="6" pattern="\d{6}" placeholder="Enter Secret Code" style="border-color: #ff3300; color: #ff3300; text-align: center; font-size: 1.2em; width: 180px;" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
+    <br><br>
+    <button onclick="attemptUnlockTerminal()" style="border-color: #ff3300; color: #ff3300; font-weight: bold;">REBOOT TERMINAL</button>
+</div>
 
 <!-- Tutorial Modal -->
 <div id="tutorial-modal" class="card hidden">
-    <h3 style="color: var(--hacker-cyan);">TUTORIAL (<span id="tut-step">1</span>/8)</h3>
+    <h3 style="color: var(--hacker-cyan);">TUTORIAL (<span id="tut-step">1</span>/9)</h3>
     <p id="tut-text" style="min-height: 70px; font-size: 0.9em; text-align: left;"></p>
     <button onclick="nextTutorial()">Next</button>
     <button onclick="closeTutorial()" style="border-color: #ff4444; color: #ff4444;">Close</button>
@@ -399,7 +509,7 @@
 <!-- Scanner Skill Modal -->
 <div id="scanner-modal" class="card hidden">
     <h3 style="color: #a6ff00;">🔍 SCANNER INTEL</h3>
-    <p style="font-size: 0.85em;">Select a rival and a target position (1-6) to intercept and reveal that digit!</p>
+    <p style="font-size: 0.85em;">Select an enemy rival and a target position (1-6) to intercept and reveal that digit!</p>
     <label>Rival Target: <select id="scan-target-select"></select></label>
     <br>
     <label>Position: 
@@ -420,11 +530,21 @@
 <!-- Virus Skill Modal -->
 <div id="virus-modal" class="card hidden">
     <h3 style="color: var(--hacker-purple);">👾 VIRUS INJECTION</h3>
-    <p style="font-size: 0.85em;">Select a rival to infect. Two feedback clues on their next guess attempt will be glitched!</p>
+    <p style="font-size: 0.85em;">Select an enemy rival to infect. Two feedback clues on their next guess attempt will be glitched!</p>
     <label>Rival Target: <select id="virus-target-select"></select></label>
     <br><br>
     <button onclick="confirmVirus()" style="border-color: var(--hacker-purple); color: var(--hacker-purple);">DEPLOY VIRUS</button>
     <button onclick="closeVirusModal()" style="border-color: gray; color: gray;">Cancel</button>
+</div>
+
+<!-- Server Explode Skill Modal -->
+<div id="explode-modal" class="card hidden">
+    <h3 style="color: #ff3300;">🧨 SERVER EXPLODE</h3>
+    <p style="font-size: 0.85em;">Select an enemy rival. Detonate their server terminal to completely disable their controls until they re-enter their secret code!</p>
+    <label>Rival Target: <select id="explode-target-select"></select></label>
+    <br><br>
+    <button onclick="confirmExplode()" style="border-color: #ff3300; color: #ff3300;">DETONATE SERVER</button>
+    <button onclick="closeExplodeModal()" style="border-color: gray; color: gray;">Cancel</button>
 </div>
 
 <script>
@@ -497,10 +617,11 @@
     function sfxEliminated() { initAudio(); playTone(300, 'square', 0.5, 0.1); setTimeout(()=>playTone(200, 'square', 0.5, 0.1), 250); }
     function sfxWin() { initAudio(); [523, 659, 783, 1046].forEach((f, i) => setTimeout(() => playTone(f, 'sine', 0.3, 0.1), i*150)); }
     
-    // New Skill Audio Effects
+    // Skill Audio Effects
     function sfxFirewall() { initAudio(); playTone(800, 'sine', 0.15, 0.1); setTimeout(()=>playTone(1200, 'sine', 0.25, 0.1), 120); }
     function sfxScan() { initAudio(); playTone(1200, 'sine', 0.08, 0.08); setTimeout(()=>playTone(1800, 'sine', 0.08, 0.08), 80); setTimeout(()=>playTone(2400, 'sine', 0.12, 0.08), 160); }
     function sfxVirus() { initAudio(); playTone(300, 'sawtooth', 0.15, 0.1); setTimeout(()=>playTone(150, 'sawtooth', 0.2, 0.1), 120); setTimeout(()=>playTone(80, 'square', 0.25, 0.1), 240); }
+    function sfxExplode() { initAudio(); playTone(120, 'sawtooth', 0.4, 0.2); setTimeout(()=>playTone(60, 'square', 0.5, 0.25), 100); setTimeout(()=>playTone(40, 'square', 0.6, 0.3), 250); }
 
     document.addEventListener('click', (e) => { if(e.target.tagName === 'BUTTON') sfxClick(); });
 
@@ -508,12 +629,13 @@
     const tutSteps = [
         "Welcome to Hack the Code! Your intellect is your sharpest exploit.",
         "The objective is to decrypt and breach your rivals' secret 6-digit codes before they breach yours.",
+        "TvT TEAM MODE: Select 🔵 Team Blue or 🔴 Team Red in the lobby. Teammates cannot attack each other and share team victory!",
         "To begin, create a room as 'Host' or enter a 'Room ID' to join an existing simulation.",
-        "In the lobby, pick 1 of 4 Special Hacker Abilities and set your secret 6-digit code. Keep it strictly classified!",
+        "In the lobby, pick 1 of 5 Special Hacker Abilities and set your secret 6-digit code. Keep it strictly classified!",
         "When all hackers are marked READY, the game begins and rivals will appear on your grid.",
-        "Enter a 6-digit guess into a rival's hack panel and press 'HACK'.",
+        "Enter a 6-digit guess into an enemy rival's hack panel and press 'HACK'.",
         "Feedback Guide:\n✅ = Digit is correct and in the right position.\n⚠️ = Digit exists in rival's code, but in a DIFFERENT position.\n❌ = Digit is NOT in rival's code.\n👾 = Corrupted clue caused by a Virus attack.",
-        "4 CLASS ABILITIES (Select 1 in Lobby):\n⚡ RECODE: Modify 1 digit of your secret code (30s CD).\n🛡️ FIREWALL: Deploy shield to block 1 incoming attack (40s CD).\n🔍 SCANNER: Scan & reveal 1 exact digit of a rival (45s CD).\n👾 VIRUS: Infect a rival to corrupt 2 clues on their next guess (35s CD)."
+        "5 CLASS ABILITIES (Select 1 in Lobby):\n⚡ RECODE: Modify 1 digit of your secret code (30s CD).\n🛡️ FIREWALL: Deploy shield to block 1 incoming attack (40s CD).\n🔍 SCANNER: Scan & reveal 1 exact digit of an enemy (45s CD).\n👾 VIRUS: Infect an enemy to corrupt 2 clues on their next guess (35s CD).\n🧨 SERVER EXPLODE: Lock an enemy's terminal until they re-type secret code (50s CD)."
     ];
     let currentTutStep = 0;
     function openTutorial() {
@@ -545,11 +667,13 @@
     let myData = { 
         name: '', 
         code: '', 
+        team: 'blue',
         ready: false, 
         eliminated: false,
         selectedSkill: 'recode',
         firewallActive: false,
-        virusInfected: false
+        virusInfected: false,
+        terminalLocked: false
     };
     let players = [];
     let trophies = parseInt(localStorage.getItem('hackTheCode_trophies')) || 0;
@@ -567,6 +691,19 @@
         sfxClick();
     }
 
+    function selectTeam(teamName) {
+        myData.team = teamName;
+        sfxClick();
+        if (isHost) {
+            let self = players.find(p => p.id === myId);
+            if (self) self.team = teamName;
+            broadcast({ type: 'PLAYER_LIST', list: players });
+            updatePlayerListUI();
+        } else if (conn) {
+            conn.send({ type: 'TEAM_UPDATE', id: myId, team: teamName });
+        }
+    }
+
     // --- PEERJS NETWORKING ---
 
     function hostGame() {
@@ -582,7 +719,7 @@
             document.getElementById('display-id').innerText = id;
             document.getElementById('qr-container').innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${id}&color=00ff41&bgcolor=000" alt="QR Room Code">`;
             showLobby();
-            addOrUpdatePlayer({ id: myId, name: myData.name, ready: false, eliminated: false });
+            addOrUpdatePlayer({ id: myId, name: myData.name, team: myData.team, ready: false, eliminated: false });
         });
 
         peer.on('connection', (c) => {
@@ -621,7 +758,7 @@
             conn = peer.connect(hostId);
             
             conn.on('open', () => {
-                conn.send({ type: 'JOIN', id: myId, name: myData.name });
+                conn.send({ type: 'JOIN', id: myId, name: myData.name, team: myData.team });
                 document.getElementById('display-id').innerText = hostId;
                 showLobby();
             });
@@ -651,8 +788,16 @@
                 location.reload();
                 break;
             case 'JOIN': 
-                addOrUpdatePlayer({ id: data.id, name: data.name, ready: false, eliminated: false });
+                addOrUpdatePlayer({ id: data.id, name: data.name, team: data.team || 'blue', ready: false, eliminated: false });
                 broadcast({ type: 'PLAYER_LIST', list: players });
+                break;
+            case 'TEAM_UPDATE':
+                let tp = players.find(p => p.id === data.id);
+                if (tp) {
+                    tp.team = data.team;
+                    broadcast({ type: 'PLAYER_LIST', list: players });
+                    updatePlayerListUI();
+                }
                 break;
             case 'PLAYER_LIST': 
                 players = data.list;
@@ -815,6 +960,14 @@
                     if (targetConn) targetConn.send(data);
                 }
                 break;
+            case 'SERVER_EXPLODE':
+                if (data.to === myId) {
+                    lockTerminalByExplosion();
+                } else if (isHost) {
+                    let targetConn = connections.find(c => c.peer === data.to);
+                    if (targetConn) targetConn.send(data);
+                }
+                break;
             case 'ELIMINATED':
                 markEliminated(data.playerId);
                 checkWinCondition();
@@ -822,8 +975,19 @@
             case 'CHAT':
                 displayChat(data.name, data.msg);
                 break;
+            case 'PRIVATE_CHAT':
+                if (data.to === myId) {
+                    displayPrivateChat(data.fromName, data.msg, false);
+                } else if (isHost) {
+                    let targetUser = players.find(p => p.name.toLowerCase() === data.toName.toLowerCase());
+                    if (targetUser) {
+                        let targetConn = connections.find(c => c.peer === targetUser.id);
+                        if (targetConn) targetConn.send(data);
+                    }
+                }
+                break;
             case 'GAME_OVER':
-                showVictory(data.winnerId, data.winnerName);
+                showVictory(data.winningTeam, data.winningPlayers);
                 break;
             case 'RESET':
                 resetToLobby();
@@ -846,7 +1010,7 @@
 
         if (isHost) {
             let self = players.find(p => p.id === myId);
-            self.ready = true;
+            if (self) self.ready = true;
             broadcast({ type: 'PLAYER_LIST', list: players });
             updatePlayerListUI();
             checkAllReady();
@@ -875,9 +1039,18 @@
         document.getElementById('chat-container').classList.remove('hidden');
         
         document.getElementById('show-my-code').innerText = myData.code;
+        
+        const myTeamDisp = document.getElementById('my-team-display');
+        if (myData.team === 'blue') {
+            myTeamDisp.innerHTML = `TEAM: <span class="team-badge-blue">🔵 BLUE</span>`;
+        } else {
+            myTeamDisp.innerHTML = `TEAM: <span class="team-badge-red">🔴 RED</span>`;
+        }
+
         myData.eliminated = false;
         myData.firewallActive = false;
         myData.virusInfected = false;
+        myData.terminalLocked = false;
         
         setupScratchpad();
         initSkillEngine();
@@ -889,28 +1062,43 @@
         list.innerHTML = '';
         players.forEach(p => {
             if (p.id === myId) return;
+            const isTeammate = (p.team === myData.team);
+            const teamClass = p.team === 'blue' ? 'team-blue-card' : 'team-red-card';
+            const teamLabel = p.team === 'blue' ? '<span class="team-badge-blue">[BLUE]</span>' : '<span class="team-badge-red">[RED]</span>';
+            
             const div = document.createElement('div');
             div.id = `player-${p.id}`;
-            div.className = 'rival-card card';
+            div.className = `rival-card card ${teamClass} ${isTeammate ? 'teammate-card' : ''}`;
+            
             div.innerHTML = `
-                <p style="margin-top:0;"><strong>&gt; ${p.name}</strong></p>
-                <input type="text" id="guess-${p.id}" maxlength="6" pattern="\\d{6}" placeholder="6-DIGIT CODE" oninput="this.value = this.value.replace(/[^0-9]/g, '')">
-                <button onclick="sendGuess('${p.id}')">HACK</button>
+                <p style="margin-top:0;">
+                    <strong>&gt; <span class="chat-name-clickable" onclick="insertWhisperName('${p.name}')">${p.name}</span></strong> ${teamLabel}
+                    ${isTeammate ? '<br><small style="color:#aaa;">(TEAMMATE)</small>' : ''}
+                </p>
+                <input type="text" id="guess-${p.id}" maxlength="6" pattern="\\d{6}" placeholder="6-DIGIT CODE" oninput="this.value = this.value.replace(/[^0-9]/g, '')" ${isTeammate ? 'disabled' : ''}>
+                <button onclick="sendGuess('${p.id}')" ${isTeammate ? 'disabled' : ''}>${isTeammate ? 'TEAMMATE' : 'HACK'}</button>
                 <div id="feedback-${p.id}" class="feedback-box">
-                    <span style="color: gray; font-size: 0.85em;">No attempts yet</span>
+                    <span style="color: gray; font-size: 0.85em;">${isTeammate ? 'Protected Teammate' : 'No attempts yet'}</span>
                 </div>`;
             list.appendChild(div);
         });
     }
 
     function sendGuess(targetId) {
-        sfxHack();
+        if (myData.terminalLocked) return alert("CRITICAL LOCKOUT! Enter your secret code in the red overlay to reboot your terminal.");
         if (myData.eliminated) return alert("You are eliminated and cannot hack.");
         
+        let targetPlayer = players.find(p => p.id === targetId);
+        if (targetPlayer && targetPlayer.team === myData.team) {
+            return alert("FRIENDLY FIRE BLOCKED! You cannot hack a teammate.");
+        }
+
         const guessInput = document.getElementById(`guess-${targetId}`);
         const guess = guessInput.value;
         
         if (guess.length !== 6) return alert("You must enter a 6-digit code attempt.");
+
+        sfxHack();
 
         if (isHost) {
             let targetConn = connections.find(c => c.peer === targetId);
@@ -973,17 +1161,30 @@
         if (!isHost) return;
 
         const activePlayers = players.filter(p => !p.eliminated);
-        if (activePlayers.length === 1) {
-            const winner = activePlayers[0];
-            showVictory(winner.id, winner.name);
-            broadcast({ type: 'GAME_OVER', winnerId: winner.id, winnerName: winner.name });
+        const activeBlue = activePlayers.filter(p => p.team === 'blue');
+        const activeRed = activePlayers.filter(p => p.team === 'red');
+
+        let winningTeam = null;
+        let winningPlayers = [];
+
+        if (activeBlue.length > 0 && activeRed.length === 0) {
+            winningTeam = 'blue';
+            winningPlayers = players.filter(p => p.team === 'blue').map(p => p.name);
+        } else if (activeRed.length > 0 && activeBlue.length === 0) {
+            winningTeam = 'red';
+            winningPlayers = players.filter(p => p.team === 'red').map(p => p.name);
         } else if (activePlayers.length === 0) {
-            showVictory(null, "No one");
-            broadcast({ type: 'GAME_OVER', winnerId: null, winnerName: "No one" });
+            winningTeam = 'none';
+            winningPlayers = [];
+        } else {
+            return; // Game continues
         }
+
+        showVictory(winningTeam, winningPlayers);
+        broadcast({ type: 'GAME_OVER', winningTeam, winningPlayers });
     }
 
-    function showVictory(winnerId, winnerName) {
+    function showVictory(winningTeam, winningPlayers) {
         sfxWin();
 
         document.getElementById('game-screen').classList.add('hidden');
@@ -991,11 +1192,13 @@
         
         const vicText = document.getElementById('victory-text');
         
-        if (winnerId === myId) {
-            vicText.innerText = "YOU ARE THE TOP HACKER! VICTORY ACHIEVED!";
+        if (winningTeam === 'none') {
+            vicText.innerText = "MUTUAL ANNIHILATION — NO SURVIVORS!";
+        } else if (myData.team === winningTeam) {
+            vicText.innerText = `🏆 YOUR TEAM (${winningTeam.toUpperCase()}) TRIUMPHED! VICTORY ACHIEVED!`;
             addTrophy();
         } else {
-            vicText.innerText = `VICTORIOUS HACKER: ${winnerName}`;
+            vicText.innerText = `TEAM ${winningTeam.toUpperCase()} IS VICTORIOUS!\n\nVictors: ${winningPlayers.join(', ')}`;
         }
 
         if (isHost) {
@@ -1022,6 +1225,7 @@
             case 'firewall': return '🛡️';
             case 'scanner': return '🔍';
             case 'virus': return '👾';
+            case 'explode': return '🧨';
             default: return '⚡';
         }
     }
@@ -1036,6 +1240,12 @@
 
         if (myData.eliminated) {
             btn.innerText = `${icon} ${skillNameUpper} (DISABLED)`;
+            btn.disabled = true;
+            return;
+        }
+
+        if (myData.terminalLocked) {
+            btn.innerText = `🧨 TERMINAL LOCKED`;
             btn.disabled = true;
             return;
         }
@@ -1066,6 +1276,7 @@
     }
 
     function useActiveSkill() {
+        if (myData.terminalLocked) return alert("Terminal locked by Server Explode! Re-enter your secret code first.");
         if (skillCooldown > 0) return;
         if (myData.eliminated) return alert("You are eliminated and cannot use skills.");
 
@@ -1082,7 +1293,15 @@
             case 'virus':
                 openVirusModal();
                 break;
+            case 'explode':
+                openExplodeModal();
+                break;
         }
+    }
+
+    // Helper: Filter non-teammate rivals for targeting skills
+    function getEnemyRivals() {
+        return players.filter(p => p.id !== myId && !p.eliminated && p.team !== myData.team);
     }
 
     // 1. Recode Skill
@@ -1135,13 +1354,13 @@
         const select = document.getElementById('scan-target-select');
         select.innerHTML = '';
         
-        const targets = players.filter(p => p.id !== myId && !p.eliminated);
-        if (targets.length === 0) return alert("No active rivals available to scan.");
+        const targets = getEnemyRivals();
+        if (targets.length === 0) return alert("No active enemy rivals available to scan.");
 
         targets.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            opt.innerText = p.name;
+            opt.innerText = `${p.name} [${p.team.toUpperCase()}]`;
             select.appendChild(opt);
         });
 
@@ -1158,7 +1377,7 @@
         const targetId = document.getElementById('scan-target-select').value;
         const pos = parseInt(document.getElementById('scan-pos-select').value);
         
-        if (!targetId) return alert("Please select a target rival.");
+        if (!targetId) return alert("Please select an enemy target.");
         
         if (isHost) {
             let targetConn = connections.find(c => c.peer === targetId);
@@ -1180,13 +1399,13 @@
         const select = document.getElementById('virus-target-select');
         select.innerHTML = '';
         
-        const targets = players.filter(p => p.id !== myId && !p.eliminated);
-        if (targets.length === 0) return alert("No active rivals available to infect.");
+        const targets = getEnemyRivals();
+        if (targets.length === 0) return alert("No active enemy rivals available to infect.");
 
         targets.forEach(p => {
             const opt = document.createElement('option');
             opt.value = p.id;
-            opt.innerText = p.name;
+            opt.innerText = `${p.name} [${p.team.toUpperCase()}]`;
             select.appendChild(opt);
         });
 
@@ -1201,7 +1420,7 @@
 
     function confirmVirus() {
         const targetId = document.getElementById('virus-target-select').value;
-        if (!targetId) return alert("Please select a target rival.");
+        if (!targetId) return alert("Please select an enemy target.");
 
         if (isHost) {
             let targetConn = connections.find(c => c.peer === targetId);
@@ -1213,6 +1432,77 @@
         sfxVirus();
         closeVirusModal();
         startSkillCooldown(35);
+    }
+
+    // 5. Server Explode Skill
+    function openExplodeModal() {
+        if (skillCooldown > 0) return;
+        if (myData.eliminated) return alert("You are eliminated and cannot use skills.");
+
+        const select = document.getElementById('explode-target-select');
+        select.innerHTML = '';
+        
+        const targets = getEnemyRivals();
+        if (targets.length === 0) return alert("No active enemy rivals available to detonate.");
+
+        targets.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.innerText = `${p.name} [${p.team.toUpperCase()}]`;
+            select.appendChild(opt);
+        });
+
+        document.getElementById('explode-modal').classList.remove('hidden');
+        document.getElementById('modal-overlay').classList.remove('hidden');
+    }
+
+    function closeExplodeModal() {
+        document.getElementById('explode-modal').classList.add('hidden');
+        document.getElementById('modal-overlay').classList.add('hidden');
+    }
+
+    function confirmExplode() {
+        const targetId = document.getElementById('explode-target-select').value;
+        if (!targetId) return alert("Please select an enemy target.");
+
+        if (isHost) {
+            let targetConn = connections.find(c => c.peer === targetId);
+            if (targetConn) targetConn.send({ type: 'SERVER_EXPLODE', from: myId, to: targetId });
+        } else {
+            conn.send({ type: 'SERVER_EXPLODE', from: myId, to: targetId });
+        }
+
+        sfxExplode();
+        closeExplodeModal();
+        startSkillCooldown(50);
+    }
+
+    // Server Explode Critical Lockout Handlers
+    function lockTerminalByExplosion() {
+        myData.terminalLocked = true;
+        sfxExplode();
+        updateSkillButtonUI();
+        
+        document.getElementById('unlock-code-input').value = '';
+        document.getElementById('server-lock-modal').classList.remove('hidden');
+        document.getElementById('server-lock-overlay').classList.remove('hidden');
+        
+        displayChat("CRITICAL ALERT", "🧨 SERVER EXPLODED! Controls locked until secret code verified.");
+    }
+
+    function attemptUnlockTerminal() {
+        const attemptedCode = document.getElementById('unlock-code-input').value.trim();
+        if (attemptedCode === myData.code) {
+            myData.terminalLocked = false;
+            document.getElementById('server-lock-modal').classList.add('hidden');
+            document.getElementById('server-lock-overlay').classList.add('hidden');
+            sfxHack();
+            updateSkillButtonUI();
+            displayChat("SYSTEM", "✅ Terminal successfully rebooted and re-authenticated!");
+        } else {
+            sfxMiss();
+            alert("INCORRECT SECRET CODE! Terminal remains locked.");
+        }
     }
 
     // --- NOTEBOOK & SCRATCHPAD ---
@@ -1249,12 +1539,16 @@
         document.getElementById('show-my-code').style.color = "white";
         document.getElementById('chat-box').innerHTML = '';
 
+        document.getElementById('server-lock-modal').classList.add('hidden');
+        document.getElementById('server-lock-overlay').classList.add('hidden');
+
         if (skillInterval) clearInterval(skillInterval);
 
         myData.ready = false;
         myData.eliminated = false;
         myData.firewallActive = false;
         myData.virusInfected = false;
+        myData.terminalLocked = false;
         skillCooldown = 0;
 
         players.forEach(p => {
@@ -1275,7 +1569,8 @@
         const list = document.getElementById('player-list');
         list.innerHTML = players.map(p => {
             let status = p.ready ? "<span class='ready-text'>[READY]</span>" : "[Waiting...]";
-            return `<div>&gt; ${p.name} ${status}</div>`;
+            let teamBadge = p.team === 'blue' ? "<span class='team-badge-blue'>[BLUE]</span>" : "<span class='team-badge-red'>[RED]</span>";
+            return `<div>&gt; <span class="chat-name-clickable" onclick="insertWhisperName('${p.name}')">${p.name}</span> ${teamBadge} ${status}</div>`;
         }).join('');
     }
 
@@ -1283,6 +1578,7 @@
         let existing = players.find(p => p.id === newPlayer.id);
         if (existing) {
             existing.name = newPlayer.name;
+            existing.team = newPlayer.team || 'blue';
             existing.ready = newPlayer.ready;
         } else {
             players.push(newPlayer);
@@ -1290,9 +1586,55 @@
         updatePlayerListUI();
     }
 
+    // --- CHAT & WHISPER SYSTEM ---
+
+    function insertWhisperName(name) {
+        const chatInput = document.getElementById('chat-input');
+        if (chatInput) {
+            chatInput.value = `@${name} `;
+            chatInput.focus();
+        }
+    }
+
     function sendChatMessage() {
         const msg = document.getElementById('chat-input').value.trim();
         if (!msg) return;
+
+        // Check for direct whisper syntax: @Name Message
+        if (msg.startsWith('@')) {
+            const spaceIndex = msg.indexOf(' ');
+            if (spaceIndex > 1) {
+                const targetName = msg.substring(1, spaceIndex).trim();
+                const privateMsg = msg.substring(spaceIndex + 1).trim();
+
+                const targetPlayer = players.find(p => p.name.toLowerCase() === targetName.toLowerCase());
+                
+                if (!targetPlayer) {
+                    alert(`Player "${targetName}" not found for whisper.`);
+                    return;
+                }
+
+                displayPrivateChat(`You ➔ ${targetPlayer.name}`, privateMsg, true);
+
+                const privData = {
+                    type: 'PRIVATE_CHAT',
+                    fromName: myData.name,
+                    toName: targetPlayer.name,
+                    to: targetPlayer.id,
+                    msg: privateMsg
+                };
+
+                if (isHost) {
+                    let targetConn = connections.find(c => c.peer === targetPlayer.id);
+                    if (targetConn) targetConn.send(privData);
+                } else {
+                    conn.send(privData);
+                }
+
+                document.getElementById('chat-input').value = '';
+                return;
+            }
+        }
         
         const data = { type: 'CHAT', name: myData.name, msg: msg };
         displayChat("You", msg);
@@ -1305,7 +1647,13 @@
 
     function displayChat(name, msg) {
         const box = document.getElementById('chat-box');
-        box.innerHTML += `<div><strong>${name}:</strong> ${msg}</div>`;
+        box.innerHTML += `<div><strong><span class="chat-name-clickable" onclick="insertWhisperName('${name}')">${name}</span>:</strong> ${msg}</div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    function displayPrivateChat(header, msg, isOutgoing) {
+        const box = document.getElementById('chat-box');
+        box.innerHTML += `<div class="whisper-msg"><strong>🔒 [WHISPER] ${header}:</strong> ${msg}</div>`;
         box.scrollTop = box.scrollHeight;
     }
 </script>
